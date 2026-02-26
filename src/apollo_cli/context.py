@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from apollo import ApolloClient
+from qodev_apollo_api import ApolloClient
 
 
 @dataclass

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-02-26
+
 ### Added
 
 - Initial CLI implementation with cyclopts framework
@@ -25,6 +27,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **news**: list (per account)
 - **jobs**: list (per account)
 - **usage**: API usage stats and rate limits
+- **install**: Install AI agent skill files with `--skills` flag
 - Centralized error handling with semantic exit codes (80-83)
-- Rich markdown rendering for terminal output
+- Rich markdown rendering for terminal output with `help_format="rich"`
 - Pagination support with page/limit controls
+- Comprehensive README.md with command reference and usage examples
+- MIT License
+- Full PyPI metadata in pyproject.toml
+- CI/CD workflows (lint, typecheck, test, publish)
+- Complete test suite with pytest and pytest-asyncio
+- AI agent skill files (SKILL.md + workflow references)
+- Dynamic help epilogue with all commands
+- Dev dependencies (ruff, mypy, pytest)
+- Tool configurations (ruff, mypy, pytest)

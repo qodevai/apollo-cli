@@ -17,10 +17,7 @@ def detail_table(data: Any, fields: list[tuple[str, str]], *, title: str | None 
         fields: List of (label, key) — key supports dot notation for nested access.
         title: Optional heading above the table.
     """
-    if isinstance(data, BaseModel):
-        d = data.model_dump()
-    else:
-        d = data
+    d = data.model_dump() if isinstance(data, BaseModel) else data
 
     lines: list[str] = []
     if title:
@@ -80,7 +77,7 @@ def list_table(
 def _get(d: dict, key: str) -> Any:
     """Get a value from a dict, supporting dot notation."""
     parts = key.split(".")
-    current = d
+    current: Any = d
     for part in parts:
         if isinstance(current, dict):
             current = current.get(part)

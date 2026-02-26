@@ -1,16 +1,44 @@
 [project]
-name = "apollo-cli"
+name = "qodev-apollo-cli"
 version = "0.1.0"
 description = "Agent-friendly CLI for the Apollo API"
+readme = "README.md"
 requires-python = ">=3.11"
+authors = [{ name = "Jan Scheffler", email = "jan.scheffler@qodev.ai" }]
+license = { text = "MIT" }
+keywords = ["apollo", "crm", "cli", "api", "sales", "contacts"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
 dependencies = [
     "cyclopts>=3.0",
     "rich>=13.0",
-    "apollo-client",
+    "qodev-apollo-api>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=0.25.0",
+    "pytest-mock>=3.15",
+    "ruff>=0.15",
+    "mypy>=1.13.0",
 ]
 
 [project.scripts]
-apollo = "apollo_cli.app:main"
+qodev-apollo-cli = "apollo_cli.app:main"
+
+[project.urls]
+Homepage = "https://github.com/qodevai/apollo-cli"
+Repository = "https://github.com/qodevai/apollo-cli"
+Issues = "https://github.com/qodevai/apollo-cli/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -20,4 +48,42 @@ build-backend = "hatchling.build"
 packages = ["src/apollo_cli"]
 
 [tool.uv.sources]
-apollo-client = { path = "../../libs/apollo" }
+qodev-apollo-api = { path = "../../libs/apollo" }
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apollo_cli"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+check_untyped_defs = true
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = "qodev_apollo_api.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "cyclopts.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

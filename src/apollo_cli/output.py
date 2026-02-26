@@ -55,10 +55,7 @@ def output(data: Any, *, ctx: Context, format_fn: Any = None) -> None:
     if ctx.json_mode:
         output_json(data)
     else:
-        if format_fn:
-            md = format_fn(data)
-        else:
-            md = generic_markdown(data)
+        md = format_fn(data) if format_fn else generic_markdown(data)
         output_markdown(md)
 
 

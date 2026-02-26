@@ -6,14 +6,14 @@ import sys
 from typing import Annotated
 
 from cyclopts import App, Group, Parameter
-
-from apollo import APIError, AuthenticationError, RateLimitError
+from qodev_apollo_api import APIError, AuthenticationError, RateLimitError
 
 import apollo_cli.context as _ctx
 
 app = App(
     name="apollo",
     help="Agent-friendly CLI for the Apollo API.",
+    help_format="rich",
     version_flags=[],
 )
 
@@ -23,34 +23,48 @@ app.meta.group_parameters = Group("Global Options", sort_key=0)
 # ---------------------------------------------------------------------------
 # Import and register command groups
 # ---------------------------------------------------------------------------
-from apollo_cli.commands.contacts import contacts_app  # noqa: E402
 from apollo_cli.commands.accounts import accounts_app  # noqa: E402
-from apollo_cli.commands.deals import deals_app  # noqa: E402
-from apollo_cli.commands.pipelines import pipelines_app, stages_app  # noqa: E402
-from apollo_cli.commands.enrich import enrich_app  # noqa: E402
-from apollo_cli.commands.people import people_app  # noqa: E402
-from apollo_cli.commands.notes import notes_app  # noqa: E402
-from apollo_cli.commands.tasks import tasks_app  # noqa: E402
 from apollo_cli.commands.calls import calls_app  # noqa: E402
+from apollo_cli.commands.contacts import contacts_app  # noqa: E402
+from apollo_cli.commands.deals import deals_app  # noqa: E402
 from apollo_cli.commands.emails import emails_app  # noqa: E402
-from apollo_cli.commands.news import news_app  # noqa: E402
+from apollo_cli.commands.enrich import enrich_app  # noqa: E402
+from apollo_cli.commands.install import install_app  # noqa: E402
 from apollo_cli.commands.jobs import jobs_app  # noqa: E402
+from apollo_cli.commands.news import news_app  # noqa: E402
+from apollo_cli.commands.notes import notes_app  # noqa: E402
+from apollo_cli.commands.people import people_app  # noqa: E402
+from apollo_cli.commands.pipelines import pipelines_app, stages_app  # noqa: E402
+from apollo_cli.commands.tasks import tasks_app  # noqa: E402
 from apollo_cli.commands.usage import usage_app  # noqa: E402
 
-app.command(contacts_app)
-app.command(accounts_app)
-app.command(deals_app)
-app.command(pipelines_app)
-app.command(stages_app)
-app.command(enrich_app)
-app.command(people_app)
-app.command(notes_app)
-app.command(tasks_app)
-app.command(calls_app)
-app.command(emails_app)
-app.command(news_app)
-app.command(jobs_app)
-app.command(usage_app)
+# Register all sub-apps
+_sub_apps = [
+    contacts_app,
+    accounts_app,
+    deals_app,
+    pipelines_app,
+    stages_app,
+    enrich_app,
+    people_app,
+    notes_app,
+    tasks_app,
+    calls_app,
+    emails_app,
+    news_app,
+    jobs_app,
+    usage_app,
+    install_app,
+]
+
+for sub in _sub_apps:
+    app.command(sub)
+    sub.help_epilogue = ""  # Prevent epilogue propagation
+
+# Build dynamic help epilogue
+from apollo_cli.help_reference import build_command_reference  # noqa: E402
+
+app.help_epilogue = build_command_reference(_sub_apps)
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +81,9 @@ EXIT_VALIDATION = 83
 def launcher(
     *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
     json: Annotated[bool, Parameter(name="--json", help="Output as JSON", negative="")] = False,
-    api_key: Annotated[str | None, Parameter(name="--api-key", help="Apollo API key (overrides APOLLO_API_KEY)", show=False)] = None,
+    api_key: Annotated[
+        str | None, Parameter(name="--api-key", help="Apollo API key (overrides APOLLO_API_KEY)", show=False)
+    ] = None,
     limit: Annotated[int, Parameter(name="--limit", help="Results per page")] = 25,
     page: Annotated[int, Parameter(name="--page", help="Page number")] = 1,
 ) -> None:
