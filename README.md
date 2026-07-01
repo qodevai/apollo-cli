@@ -61,7 +61,7 @@ $ qodev-apollo-cli usage
 | | `get` | Get contact details by ID |
 | | `create` | Create a new contact (`--first-name`, `--last-name`, `--email`, etc.) |
 | | `update` | Update contact (`--title`, `--label-ids`) |
-| | `find-by-linkedin` | Find contact by LinkedIn URL (`--create`, `--stage-id`) |
+| | `upsert-by-linkedin` | Get or create a contact by LinkedIn URL (`--name`, `--title`, `--stage-id`) |
 | | `stages` | List all contact stages |
 | **accounts** | `search` | Search companies/accounts (`--query`, `--domain`) |
 | | `get` | Get account details by ID |
@@ -167,15 +167,15 @@ qodev-apollo-cli deals search --stage-id <stage-id>
 ### LinkedIn integration
 
 ```bash
-# Find contact by LinkedIn URL
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith"
+# Read-only lookup by LinkedIn URL (returns 0..n contacts, never writes)
+qodev-apollo-cli contacts search --linkedin-url "https://linkedin.com/in/janesmith"
 
-# Auto-create if not found
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith" --create
+# Get or create a contact by LinkedIn URL (upsert); --name is required to create
+qodev-apollo-cli contacts upsert-by-linkedin "https://linkedin.com/in/janesmith" --name "Jane Smith"
 
-# Assign to stage on creation
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith" \
-  --create --stage-id <stage-id>
+# Set title / stage when creating
+qodev-apollo-cli contacts upsert-by-linkedin "https://linkedin.com/in/janesmith" \
+  --name "Jane Smith" --title "VP Engineering" --stage-id <stage-id>
 ```
 
 ### Company enrichment (FREE)

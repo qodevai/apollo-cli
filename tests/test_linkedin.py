@@ -18,6 +18,7 @@ CANON = "http://www.linkedin.com/in/daniel-wessel-575597b8"
         "www.linkedin.com/in/daniel-wessel-575597b8",  # no scheme
         "https://www.linkedin.com/in/daniel-wessel-575597b8?utm_source=share",  # query params
         "  https://www.linkedin.com/in/daniel-wessel-575597b8/  ",  # surrounding whitespace
+        "https://www.linkedin.com/in/Daniel-Wessel-575597b8",  # mixed-case slug (Apollo stores lowercase)
     ],
 )
 def test_canonicalizes_common_variants_to_apollo_form(raw: str) -> None:

@@ -2,10 +2,11 @@
 
 Apollo stores and *exact-matches* LinkedIn profile URLs in the canonical form
 ``http://www.linkedin.com/in/<slug>`` — http scheme, ``www`` host, no trailing slash,
-lowercase percent-encoding. Apollo's ``linkedin_url`` search filter is a literal string
-match, so any other shape a user pastes (``https://``, missing ``www``, a trailing slash,
-uppercase ``%HEX``, tracking query params) silently returns zero results. Canonicalizing
-before searching is what makes ``contacts search --linkedin-url`` and ``find-by-linkedin``
+lowercased slug (Apollo lowercases the whole URL on its side). Apollo's ``linkedin_url``
+search filter is a literal string match, so any other shape a user pastes (``https://``,
+missing ``www``, a trailing slash, a mixed-case slug or ``%HEX``, tracking query params)
+silently returns zero results. Canonicalizing
+before searching is what makes ``contacts search --linkedin-url`` and ``upsert-by-linkedin``
 match reliably.
 """
 
@@ -16,7 +17,6 @@ import re
 # Modern LinkedIn profile URLs are /in/<slug>. Legacy /pub/ URLs carry a multi-segment
 # id we must not truncate, so we leave anything that isn't /in/ untouched.
 _PROFILE_RE = re.compile(r"linkedin\.com/in/([^/?#]+)", re.IGNORECASE)
-_PCT_RE = re.compile(r"%[0-9A-Fa-f]{2}")
 
 
 def apollo_canonical_linkedin_url(url: str) -> str:
@@ -30,5 +30,5 @@ def apollo_canonical_linkedin_url(url: str) -> str:
     match = _PROFILE_RE.search(url.strip())
     if not match:
         return url
-    slug = _PCT_RE.sub(lambda m: m.group(0).lower(), match.group(1).rstrip("/"))
+    slug = match.group(1).rstrip("/").lower()
     return f"http://www.linkedin.com/in/{slug}"

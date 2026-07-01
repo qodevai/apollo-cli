@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from cyclopts import App, Parameter
 
@@ -13,7 +13,7 @@ from apollo_cli.formatters.contacts import (
     format_stages_list,
 )
 from apollo_cli.linkedin import apollo_canonical_linkedin_url
-from apollo_cli.output import output, output_list
+from apollo_cli.output import error, output, output_list
 from apollo_cli.util import parse_comma_list
 
 contacts_app = App(name="contacts", help="Manage contacts.")
@@ -109,37 +109,74 @@ async def update(
     output(result, ctx=ctx, format_fn=format_contact_detail)
 
 
-@contacts_app.command(name="find-by-linkedin")
-async def find_by_linkedin(
+def _format_upsert_result(data: dict[str, Any]) -> str:
+    status = "Created new contact" if data["created"] else "Found existing contact"
+    return f"**{status}**\n\n{format_contact_detail(data['contact'])}"
+
+
+@contacts_app.command(name="upsert-by-linkedin")
+async def upsert_by_linkedin(
     url: Annotated[str, Parameter(help="LinkedIn profile URL")],
     *,
-    name: Annotated[str | None, Parameter(name="--name", help="Person's full name (for fallback search)")] = None,
-    create_flag: Annotated[bool, Parameter(name="--create", help="Auto-create if not found", negative="")] = False,
-    stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Stage ID for auto-created contact")] = None,
+    name: Annotated[
+        str | None,
+        Parameter(name="--name", help="Full name 'First Last' — required to create the contact if it doesn't exist"),
+    ] = None,
+    title: Annotated[str | None, Parameter(name="--title", help="Job title (used only when creating)")] = None,
+    company: Annotated[str | None, Parameter(name="--company", help="Company name (used only when creating)")] = None,
+    stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Stage ID (used only when creating)")] = None,
 ) -> None:
-    """Find a contact by LinkedIn URL with fallback strategies."""
+    """Get or create a contact by LinkedIn URL (upsert).
+
+    Resolves the URL to an existing contact and returns it, or — if none exists —
+    creates one (requires ``--name``) and returns it. The result carries a ``created``
+    flag. For a read-only lookup that never writes, use ``contacts search --linkedin-url``.
+    """
     canonical = apollo_canonical_linkedin_url(url)
     async with ctx.client() as client:
-        # Reliable exact-match on Apollo's canonical URL first. The client's
-        # find_contact_by_linkedin_url normalizes to https://, which never matches
-        # Apollo's http://-stored URLs, so its URL tier always misses; do the search
-        # here and only delegate for the name-search / auto-create fallbacks.
-        result = await client.search_contacts(linkedin_url=canonical, limit=5)
-        contact_id = result.items[0].id if result.items else None
-        if not contact_id and (name or create_flag):
-            contact_id = await client.find_contact_by_linkedin_url(
-                linkedin_url=url,
-                person_name=name,
-                create_if_missing=create_flag,
-                contact_stage_id=stage_id,
+        # 1. Exact-match lookup on Apollo's canonical URL.
+        result = await client.search_contacts(linkedin_url=canonical, limit=1)
+        existing = result.items[0] if result.items else None
+
+        # 2. Name fallback — catch a contact stored under a drifted/numeric URL so we
+        #    don't create a duplicate; accept only an exact canonical-URL identity match.
+        #    First match wins: upsert just needs to know one exists (unlike the old client,
+        #    we intentionally don't treat >1 match as ambiguous).
+        if existing is None and name:
+            by_name = await client.search_contacts(q_keywords=name, limit=10)
+            existing = next(
+                (
+                    c
+                    for c in by_name.items
+                    if c.linkedin_url and apollo_canonical_linkedin_url(c.linkedin_url) == canonical
+                ),
+                None,
             )
 
-    if contact_id:
-        output({"contact_id": contact_id}, ctx=ctx)
-    else:
-        from apollo_cli.output import error
+        if existing is not None:
+            output({"created": False, "contact": existing}, ctx=ctx, format_fn=_format_upsert_result)
+            return
 
-        error("Contact not found.", ctx=ctx, code="not_found", exit_code=1)
+        # 3. Create — Apollo needs both a first and a last name.
+        first, _, last = name.strip().partition(" ") if name else ("", "", "")
+        if not (first and last):
+            error(
+                'No contact for that LinkedIn URL. Pass --name "First Last" to create one.',
+                ctx=ctx,
+                code="name_required",
+                exit_code=2,
+            )
+            return
+        fields: dict = {"linkedin_url": canonical}
+        if title:
+            fields["title"] = title
+        if company:
+            fields["company_name"] = company
+        if stage_id:
+            fields["contact_stage_id"] = stage_id
+        created = await client.create_contact(first, last, **fields)
+
+    output({"created": True, "contact": created}, ctx=ctx, format_fn=_format_upsert_result)
 
 
 @contacts_app.command

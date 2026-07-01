@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from qodev_apollo_api.models import Contact
 
 import apollo_cli.context as _ctx
 
@@ -86,24 +87,114 @@ class TestContactsCommands:
         assert call_kwargs["linkedin_url"] == "http://www.linkedin.com/in/janesmith"
 
     @pytest.mark.asyncio
-    async def test_find_by_linkedin_uses_canonical_search(self, capsys) -> None:
-        """find-by-linkedin resolves via an exact canonical search (not the client's https path)."""
+    async def test_upsert_returns_existing_contact(self, capsys) -> None:
+        """upsert-by-linkedin returns the existing contact (created=False) via canonical search, no write."""
         mock_client = MagicMock()
-        match = MagicMock(id="abc-123", linkedin_url="http://www.linkedin.com/in/janesmith")
-        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[match], total=1, page=1))
-        mock_client.find_contact_by_linkedin_url = AsyncMock(return_value=None)
+        contact = Contact.model_validate(
+            {"id": "c1", "name": "Jane Smith", "linkedin_url": "http://www.linkedin.com/in/janesmith"}
+        )
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[contact], total=1, page=1))
+        mock_client.create_contact = AsyncMock()
 
         _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
 
         with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
-            from apollo_cli.commands.contacts import find_by_linkedin
+            from apollo_cli.commands.contacts import upsert_by_linkedin
 
-            await find_by_linkedin("https://www.linkedin.com/in/janesmith/")
+            await upsert_by_linkedin("https://www.linkedin.com/in/janesmith/")
 
         assert mock_client.search_contacts.call_args.kwargs["linkedin_url"] == "http://www.linkedin.com/in/janesmith"
-        mock_client.find_contact_by_linkedin_url.assert_not_called()  # found via search; no fallback
+        mock_client.create_contact.assert_not_called()
         data = json.loads(capsys.readouterr().out)
-        assert data["contact_id"] == "abc-123"
+        assert data["created"] is False
+        assert data["contact"]["id"] == "c1"
+
+    @pytest.mark.asyncio
+    async def test_upsert_creates_when_missing(self, capsys) -> None:
+        """upsert-by-linkedin creates (created=True) when none exists and --name is given."""
+        mock_client = MagicMock()
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[], total=0, page=1))
+        mock_client.create_contact = AsyncMock(
+            return_value=Contact.model_validate(
+                {"id": "new1", "name": "Jane Smith", "linkedin_url": "http://www.linkedin.com/in/janesmith"}
+            )
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import upsert_by_linkedin
+
+            await upsert_by_linkedin("https://www.linkedin.com/in/janesmith/", name="Jane Smith", title="VP")
+
+        args, kwargs = mock_client.create_contact.call_args
+        assert args == ("Jane", "Smith")
+        assert kwargs["linkedin_url"] == "http://www.linkedin.com/in/janesmith"
+        assert kwargs["title"] == "VP"
+        data = json.loads(capsys.readouterr().out)
+        assert data["created"] is True
+        assert data["contact"]["id"] == "new1"
+
+    @pytest.mark.asyncio
+    async def test_upsert_requires_name_to_create(self, capsys) -> None:
+        """upsert-by-linkedin errors (exit 2, code name_required) when missing and no --name given."""
+        mock_client = MagicMock()
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[], total=0, page=1))
+        mock_client.create_contact = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import upsert_by_linkedin
+
+            with pytest.raises(SystemExit) as exc:
+                await upsert_by_linkedin("https://www.linkedin.com/in/janesmith/")
+
+        assert exc.value.code == 2
+        mock_client.create_contact.assert_not_called()
+        assert json.loads(capsys.readouterr().out)["code"] == "name_required"
+
+    @pytest.mark.asyncio
+    async def test_upsert_rejects_single_word_name(self, capsys) -> None:
+        """A single-word --name can't create (Apollo needs first + last) — errors, no write."""
+        mock_client = MagicMock()
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[], total=0, page=1))
+        mock_client.create_contact = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import upsert_by_linkedin
+
+            with pytest.raises(SystemExit) as exc:
+                await upsert_by_linkedin("https://www.linkedin.com/in/janesmith/", name="Cher")
+
+        assert exc.value.code == 2
+        mock_client.create_contact.assert_not_called()
+        assert json.loads(capsys.readouterr().out)["code"] == "name_required"
+
+    @pytest.mark.asyncio
+    async def test_upsert_name_fallback_prevents_duplicate(self, capsys) -> None:
+        """A URL miss but a name-search hit with the same canonical URL returns existing, not a new create."""
+        mock_client = MagicMock()
+        existing = Contact.model_validate({"id": "c9", "linkedin_url": "https://www.linkedin.com/in/janesmith/"})
+        mock_client.search_contacts = AsyncMock(
+            side_effect=[
+                MockSearchResult(items=[], total=0, page=1),  # URL lookup misses
+                MockSearchResult(items=[existing], total=1, page=1),  # name search hits
+            ]
+        )
+        mock_client.create_contact = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import upsert_by_linkedin
+
+            await upsert_by_linkedin("https://www.linkedin.com/in/janesmith/", name="Jane Smith")
+
+        mock_client.create_contact.assert_not_called()  # deduped — no duplicate created
+        assert json.loads(capsys.readouterr().out)["created"] is False
 
     @pytest.mark.asyncio
     async def test_contacts_get(self, sample_contact: dict, capsys) -> None:
