@@ -70,6 +70,42 @@ class TestContactsCommands:
         assert call_kwargs["q_keywords"] == "engineer"
 
     @pytest.mark.asyncio
+    async def test_contacts_search_canonicalizes_linkedin_url(self, sample_contact: dict, capsys) -> None:
+        """--linkedin-url is canonicalized to Apollo's exact stored form before searching."""
+        mock_client = MagicMock()
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[sample_contact], total=1, page=1))
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import search
+
+            await search(linkedin_url="https://www.linkedin.com/in/janesmith/")
+
+        call_kwargs = mock_client.search_contacts.call_args.kwargs
+        assert call_kwargs["linkedin_url"] == "http://www.linkedin.com/in/janesmith"
+
+    @pytest.mark.asyncio
+    async def test_find_by_linkedin_uses_canonical_search(self, capsys) -> None:
+        """find-by-linkedin resolves via an exact canonical search (not the client's https path)."""
+        mock_client = MagicMock()
+        match = MagicMock(id="abc-123", linkedin_url="http://www.linkedin.com/in/janesmith")
+        mock_client.search_contacts = AsyncMock(return_value=MockSearchResult(items=[match], total=1, page=1))
+        mock_client.find_contact_by_linkedin_url = AsyncMock(return_value=None)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import find_by_linkedin
+
+            await find_by_linkedin("https://www.linkedin.com/in/janesmith/")
+
+        assert mock_client.search_contacts.call_args.kwargs["linkedin_url"] == "http://www.linkedin.com/in/janesmith"
+        mock_client.find_contact_by_linkedin_url.assert_not_called()  # found via search; no fallback
+        data = json.loads(capsys.readouterr().out)
+        assert data["contact_id"] == "abc-123"
+
+    @pytest.mark.asyncio
     async def test_contacts_get(self, sample_contact: dict, capsys) -> None:
         """Test contacts get command."""
         mock_client = MagicMock()
