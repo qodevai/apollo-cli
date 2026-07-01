@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from cyclopts import App, Parameter
 
@@ -13,7 +13,7 @@ from apollo_cli.formatters.contacts import (
     format_stages_list,
 )
 from apollo_cli.linkedin import apollo_canonical_linkedin_url
-from apollo_cli.output import error, generic_markdown, output, output_list
+from apollo_cli.output import error, output, output_list
 from apollo_cli.util import parse_comma_list
 
 contacts_app = App(name="contacts", help="Manage contacts.")
@@ -109,9 +109,9 @@ async def update(
     output(result, ctx=ctx, format_fn=format_contact_detail)
 
 
-def _format_upsert_result(data: dict) -> str:
+def _format_upsert_result(data: dict[str, Any]) -> str:
     status = "Created new contact" if data["created"] else "Found existing contact"
-    return f"**{status}**\n\n{generic_markdown(data['contact'])}"
+    return f"**{status}**\n\n{format_contact_detail(data['contact'])}"
 
 
 @contacts_app.command(name="upsert-by-linkedin")
@@ -140,6 +140,8 @@ async def upsert_by_linkedin(
 
         # 2. Name fallback — catch a contact stored under a drifted/numeric URL so we
         #    don't create a duplicate; accept only an exact canonical-URL identity match.
+        #    First match wins: upsert just needs to know one exists (unlike the old client,
+        #    we intentionally don't treat >1 match as ambiguous).
         if existing is None and name:
             by_name = await client.search_contacts(q_keywords=name, limit=10)
             existing = next(
@@ -155,8 +157,9 @@ async def upsert_by_linkedin(
             output({"created": False, "contact": existing}, ctx=ctx, format_fn=_format_upsert_result)
             return
 
-        # 3. Create — needs a name to split into first/last.
-        if not name:
+        # 3. Create — Apollo needs both a first and a last name.
+        first, _, last = name.strip().partition(" ") if name else ("", "", "")
+        if not (first and last):
             error(
                 'No contact for that LinkedIn URL. Pass --name "First Last" to create one.',
                 ctx=ctx,
@@ -164,7 +167,6 @@ async def upsert_by_linkedin(
                 exit_code=2,
             )
             return
-        first, _, last = name.strip().partition(" ")
         fields: dict = {"linkedin_url": canonical}
         if title:
             fields["title"] = title
