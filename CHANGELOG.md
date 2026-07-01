@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.0.0] - 2026-07-01
+
+### Changed
+
+- **BREAKING — `contacts find-by-linkedin` is now `contacts upsert-by-linkedin`** with
+  honest get-or-create semantics. It returns the full contact plus a `created` flag
+  (not a bare `contact_id`), a missing contact is a normal result rather than an exit-1
+  `not_found` error, and `--name` is required to create. Before creating it name-searches
+  to avoid duplicating a contact stored under a different URL. Read-only lookups now use
+  `contacts search --linkedin-url`.
+
+### Removed
+
+- **BREAKING — `contacts find-by-linkedin`** (and its `--create` flag). The read path is
+  `contacts search --linkedin-url`; the write path is `contacts upsert-by-linkedin`.
 
 ### Added
 
@@ -23,11 +37,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   trailing slash, lowercase `%hex`); the filter was passed through verbatim, so a normal
   `https://.../in/slug/` URL silently returned zero results. Inputs are now canonicalized
   to Apollo's stored form before searching (new `apollo_cli.linkedin` module).
-- **`contacts find-by-linkedin` no longer under-matches.** It resolves the URL via an
-  exact canonical search first, instead of the API client's `find_contact_by_linkedin_url`,
-  whose `https://` normalization never matches Apollo's `http://`-stored URLs (its URL tier
-  always missed and fell through to name search). Name-search / auto-create fallbacks are
-  still used when the canonical search finds nothing.
 
 ## [0.1.0] - 2026-02-26
 

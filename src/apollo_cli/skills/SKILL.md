@@ -33,7 +33,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 | `contacts get ID` | Get contact details |
 | `contacts create --first-name F --last-name L [--email E] [--title T] [--company C] [--linkedin-url URL]` | Create contact |
 | `contacts update ID [--title T] [--label-ids IDS]` | Update contact |
-| `contacts find-by-linkedin URL [--create] [--name N] [--stage-id ID]` | Find contact by LinkedIn URL |
+| `contacts upsert-by-linkedin URL [--name N] [--title T] [--stage-id ID]` | Get or create a contact by LinkedIn URL |
 | `contacts stages` | List all contact stages |
 
 ### accounts
@@ -182,15 +182,15 @@ qodev-apollo-cli deals search --stage-id <stage-id>
 ### LinkedIn integration
 
 ```bash
-# Find contact by LinkedIn URL
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith"
+# Read-only lookup by LinkedIn URL (returns 0..n contacts, never writes)
+qodev-apollo-cli contacts search --linkedin-url "https://linkedin.com/in/janesmith"
 
-# Auto-create if not found
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith" --create
+# Get or create a contact by LinkedIn URL (upsert); --name is required to create
+qodev-apollo-cli contacts upsert-by-linkedin "https://linkedin.com/in/janesmith" --name "Jane Smith"
 
-# Assign to stage on creation
-qodev-apollo-cli contacts find-by-linkedin "https://linkedin.com/in/janesmith" \
-  --create --stage-id <stage-id>
+# Set title / stage when creating
+qodev-apollo-cli contacts upsert-by-linkedin "https://linkedin.com/in/janesmith" \
+  --name "Jane Smith" --title "VP Engineering" --stage-id <stage-id>
 ```
 
 ## References

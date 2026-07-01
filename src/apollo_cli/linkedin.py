@@ -5,7 +5,7 @@ Apollo stores and *exact-matches* LinkedIn profile URLs in the canonical form
 lowercase percent-encoding. Apollo's ``linkedin_url`` search filter is a literal string
 match, so any other shape a user pastes (``https://``, missing ``www``, a trailing slash,
 uppercase ``%HEX``, tracking query params) silently returns zero results. Canonicalizing
-before searching is what makes ``contacts search --linkedin-url`` and ``find-by-linkedin``
+before searching is what makes ``contacts search --linkedin-url`` and ``upsert-by-linkedin``
 match reliably.
 """
 
