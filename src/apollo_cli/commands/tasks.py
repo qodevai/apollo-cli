@@ -9,6 +9,7 @@ from cyclopts import App, Parameter
 from apollo_cli.context import ctx
 from apollo_cli.formatters.generic import list_table
 from apollo_cli.output import output, output_list
+from apollo_cli.util import parse_csv
 
 tasks_app = App(name="tasks", help="Task management.")
 
@@ -58,7 +59,7 @@ async def create(
     priority: Annotated[str, Parameter(name="--priority", help="Priority (high, medium, low)")] = "medium",
 ) -> None:
     """Create a new task."""
-    ids = [cid.strip() for cid in contact_ids.split(",")]
+    ids = parse_csv(contact_ids)
 
     async with ctx.client() as client:
         result = await client.create_task(contact_ids=ids, note=note, type=type, priority=priority)

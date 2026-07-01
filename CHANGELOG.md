@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **internal**: Extracted the inline comma-splitting logic (used in `contacts update --label-ids`, `people search --titles/--locations`, `tasks create --contact-ids`, and `notes create --contact-ids/--account-ids`) into a shared `apollo_cli.util.parse_csv` helper. Behavior is now consistent across every CSV flag.
+
+### Fixed
+
+- **CSV flags**: All comma-separated CLI arguments now silently drop embedded empty segments, whitespace-only tokens, and leading/trailing commas — e.g. `--contact-ids "a,,b"` now sends `["a", "b"]` instead of `["a", "", "b"]`, which Apollo would reject with a 400. Affects every command that takes a CSV flag.
+
 ## [0.1.0] - 2026-02-26
 
 ### Added
