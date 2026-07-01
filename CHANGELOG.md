@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **comma-list flags — forgiving on typos, loud on garbage.** All comma-separated CLI arguments now drop embedded empty segments, whitespace-only tokens, and leading/trailing commas — so `--contact-ids "a,,b"` sends `["a", "b"]` instead of `["a", "", "b"]` (which Apollo rejects with a 400). Empty (`""`) or whitespace-only input maps to "flag not provided", but input like `",,,"` — where the user typed *something* that collapses to nothing — now surfaces as a validation error (exit code 83, `"validation"`) via the CLI's central error handler, instead of a raw Python traceback or a silent flag-omit. Affects every command that takes a comma-list flag.
+- **notes docs**: `README.md` and `skills/SKILL.md` referenced a non-existent `--note` flag on `notes create`; the actual flag has always been `--content`. Also surfaced the already-implemented `--account-id`/`--account-ids` flags in both docs (previously only `--contact-id`/`--contact-ids` were documented). AI agents following `SKILL.md` would have hit `--note` errors.
 
 ## [0.1.0] - 2026-02-26
 

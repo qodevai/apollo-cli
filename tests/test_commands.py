@@ -256,3 +256,26 @@ class TestNotesCommands:
 
         mock_client.search_notes.assert_called_once()
         assert mock_client.search_notes.call_args.kwargs["opportunity_ids"] == ["deal-1"]
+
+    @pytest.mark.asyncio
+    async def test_notes_create_attaches_to_all_three_at_once(self, capsys) -> None:
+        """A single note can attach to contacts, accounts, and opportunities together."""
+        mock_client = MagicMock()
+        mock_client.create_note = AsyncMock(return_value={"id": "note-1", "content": "combined"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import create
+
+            await create(
+                content="combined",
+                contact_ids="c1",
+                account_ids="a1",
+                opportunity_ids="d1",
+            )
+
+        call_kwargs = mock_client.create_note.call_args.kwargs
+        assert call_kwargs["contact_ids"] == ["c1"]
+        assert call_kwargs["account_ids"] == ["a1"]
+        assert call_kwargs["opportunity_ids"] == ["d1"]

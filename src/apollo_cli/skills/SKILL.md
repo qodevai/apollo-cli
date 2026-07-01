@@ -82,8 +82,8 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `notes search [--contact-id ID]` | Search notes |
-| `notes create --contact-ids IDS --note TEXT` | Create a note |
+| `notes search [--contact-id ID] [--account-id ID] [--opportunity-id ID]` | Search notes |
+| `notes create --content TEXT [--contact-ids IDS] [--account-ids IDS] [--opportunity-ids IDS]` | Create a note (attach to any combination of contacts/accounts/opportunities) |
 
 ### tasks
 
