@@ -12,6 +12,7 @@ from apollo_cli.formatters.contacts import (
     format_contact_list,
     format_stages_list,
 )
+from apollo_cli.linkedin import apollo_canonical_linkedin_url
 from apollo_cli.output import output, output_list
 from apollo_cli.util import parse_comma_list
 
@@ -32,7 +33,9 @@ async def search(
     if stage_id:
         filters["contact_stage_ids"] = [stage_id]
     if linkedin_url:
-        filters["linkedin_url"] = linkedin_url
+        # Apollo exact-matches its stored http://www.linkedin.com/in/<slug> form, so
+        # canonicalize or the filter silently returns nothing.
+        filters["linkedin_url"] = apollo_canonical_linkedin_url(linkedin_url)
 
     async with ctx.client() as client:
         result = await client.search_contacts(page=ctx.page, limit=ctx.limit, **filters)
@@ -115,13 +118,21 @@ async def find_by_linkedin(
     stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Stage ID for auto-created contact")] = None,
 ) -> None:
     """Find a contact by LinkedIn URL with fallback strategies."""
+    canonical = apollo_canonical_linkedin_url(url)
     async with ctx.client() as client:
-        contact_id = await client.find_contact_by_linkedin_url(
-            linkedin_url=url,
-            person_name=name,
-            create_if_missing=create_flag,
-            contact_stage_id=stage_id,
-        )
+        # Reliable exact-match on Apollo's canonical URL first. The client's
+        # find_contact_by_linkedin_url normalizes to https://, which never matches
+        # Apollo's http://-stored URLs, so its URL tier always misses; do the search
+        # here and only delegate for the name-search / auto-create fallbacks.
+        result = await client.search_contacts(linkedin_url=canonical, limit=5)
+        contact_id = result.items[0].id if result.items else None
+        if not contact_id and (name or create_flag):
+            contact_id = await client.find_contact_by_linkedin_url(
+                linkedin_url=url,
+                person_name=name,
+                create_if_missing=create_flag,
+                contact_stage_id=stage_id,
+            )
 
     if contact_id:
         output({"contact_id": contact_id}, ctx=ctx)

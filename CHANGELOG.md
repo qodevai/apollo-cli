@@ -18,6 +18,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **comma-list flags — forgiving on typos, loud on garbage.** All comma-separated CLI arguments now drop embedded empty segments, whitespace-only tokens, and leading/trailing commas — so `--contact-ids "a,,b"` sends `["a", "b"]` instead of `["a", "", "b"]` (which Apollo rejects with a 400). Empty (`""`) or whitespace-only input maps to "flag not provided", but input like `",,,"` — where the user typed *something* that collapses to nothing — now surfaces as a validation error (exit code 83, `"validation"`) via the CLI's central error handler, instead of a raw Python traceback or a silent flag-omit. Affects every command that takes a comma-list flag.
 - **notes docs**: `README.md` and `skills/SKILL.md` referenced a non-existent `--note` flag on `notes create`; the actual flag has always been `--content`. Also surfaced the already-implemented `--account-id`/`--account-ids` flags in both docs (previously only `--contact-id`/`--contact-ids` were documented). AI agents following `SKILL.md` would have hit `--note` errors.
+- **`contacts search --linkedin-url` now matches reliably.** Apollo stores and
+  exact-matches LinkedIn URLs as `http://www.linkedin.com/in/<slug>` (http, `www`, no
+  trailing slash, lowercase `%hex`); the filter was passed through verbatim, so a normal
+  `https://.../in/slug/` URL silently returned zero results. Inputs are now canonicalized
+  to Apollo's stored form before searching (new `apollo_cli.linkedin` module).
+- **`contacts find-by-linkedin` no longer under-matches.** It resolves the URL via an
+  exact canonical search first, instead of the API client's `find_contact_by_linkedin_url`,
+  whose `https://` normalization never matches Apollo's `http://`-stored URLs (its URL tier
+  always missed and fell through to name search). Name-search / auto-create fallbacks are
+  still used when the canonical search finds nothing.
 
 ## [0.1.0] - 2026-02-26
 
