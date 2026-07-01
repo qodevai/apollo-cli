@@ -18,6 +18,7 @@ NOTE_LIST_COLUMNS = [
     ("Content", "content"),
     ("Contact ID", "contact_id"),
     ("Account ID", "account_id"),
+    ("Opportunity ID", "opportunity_id"),
     ("Created", "created_at"),
 ]
 
@@ -27,13 +28,18 @@ async def search(
     *,
     contact_id: Annotated[str | None, Parameter(name="--contact-id", help="Filter by contact ID")] = None,
     account_id: Annotated[str | None, Parameter(name="--account-id", help="Filter by account ID")] = None,
+    opportunity_id: Annotated[
+        str | None, Parameter(name="--opportunity-id", help="Filter by opportunity/deal ID")
+    ] = None,
 ) -> None:
-    """Search notes by contact or account."""
+    """Search notes by contact, account, or opportunity."""
     filters: dict = {}
     if contact_id:
         filters["contact_ids"] = [contact_id]
     if account_id:
         filters["account_ids"] = [account_id]
+    if opportunity_id:
+        filters["opportunity_ids"] = [opportunity_id]
 
     async with ctx.client() as client:
         result = await client.search_notes(page=ctx.page, limit=ctx.limit, **filters)
@@ -55,6 +61,9 @@ async def create(
     content: Annotated[str, Parameter(name="--content", help="Note content")],
     contact_ids: Annotated[str | None, Parameter(name="--contact-ids", help="Comma-separated contact IDs")] = None,
     account_ids: Annotated[str | None, Parameter(name="--account-ids", help="Comma-separated account IDs")] = None,
+    opportunity_ids: Annotated[
+        str | None, Parameter(name="--opportunity-ids", help="Comma-separated opportunity/deal IDs")
+    ] = None,
 ) -> None:
     """Create a new note."""
     kwargs: dict = {}
@@ -62,6 +71,8 @@ async def create(
         kwargs["contact_ids"] = parse_comma_list(contact_ids)
     if account_ids:
         kwargs["account_ids"] = parse_comma_list(account_ids)
+    if opportunity_ids:
+        kwargs["opportunity_ids"] = parse_comma_list(opportunity_ids)
 
     async with ctx.client() as client:
         result = await client.create_note(content, **kwargs)

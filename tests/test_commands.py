@@ -221,3 +221,61 @@ class TestPipelinesCommands:
         captured = capsys.readouterr()
         data = json.loads(captured.out)
         assert data["name"] == "Sales Pipeline"
+
+
+class TestNotesCommands:
+    @pytest.mark.asyncio
+    async def test_notes_create_with_opportunity_ids(self, capsys) -> None:
+        """`notes create --opportunity-ids X,Y` forwards a list to the client."""
+        mock_client = MagicMock()
+        mock_client.create_note = AsyncMock(return_value={"id": "note-1", "content": "hi"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import create
+
+            await create(content="hi", opportunity_ids="deal-1, deal-2")
+
+        mock_client.create_note.assert_called_once()
+        assert mock_client.create_note.call_args.args == ("hi",)
+        assert mock_client.create_note.call_args.kwargs["opportunity_ids"] == ["deal-1", "deal-2"]
+
+    @pytest.mark.asyncio
+    async def test_notes_search_with_opportunity_id(self, capsys) -> None:
+        """`notes search --opportunity-id X` filters by opportunity_ids=[X]."""
+        mock_client = MagicMock()
+        mock_client.search_notes = AsyncMock(return_value=MockSearchResult(items=[], total=0, page=1))
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import search
+
+            await search(opportunity_id="deal-1")
+
+        mock_client.search_notes.assert_called_once()
+        assert mock_client.search_notes.call_args.kwargs["opportunity_ids"] == ["deal-1"]
+
+    @pytest.mark.asyncio
+    async def test_notes_create_attaches_to_all_three_at_once(self, capsys) -> None:
+        """A single note can attach to contacts, accounts, and opportunities together."""
+        mock_client = MagicMock()
+        mock_client.create_note = AsyncMock(return_value={"id": "note-1", "content": "combined"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import create
+
+            await create(
+                content="combined",
+                contact_ids="c1",
+                account_ids="a1",
+                opportunity_ids="d1",
+            )
+
+        call_kwargs = mock_client.create_note.call_args.kwargs
+        assert call_kwargs["contact_ids"] == ["c1"]
+        assert call_kwargs["account_ids"] == ["a1"]
+        assert call_kwargs["opportunity_ids"] == ["d1"]
