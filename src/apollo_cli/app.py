@@ -102,6 +102,8 @@ def launcher(
         _handle_error(msg, code="rate_limit", exit_code=EXIT_RATE_LIMIT)
     except APIError as exc:
         _handle_error(str(exc), code="api_error", exit_code=EXIT_API)
+    except ValueError as exc:
+        _handle_error(str(exc), code="validation", exit_code=EXIT_VALIDATION)
     except SystemExit:
         raise
     except KeyboardInterrupt:
