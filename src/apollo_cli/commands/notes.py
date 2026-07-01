@@ -9,7 +9,7 @@ from cyclopts import App, Parameter
 from apollo_cli.context import ctx
 from apollo_cli.formatters.generic import list_table
 from apollo_cli.output import output, output_list
-from apollo_cli.util import parse_csv
+from apollo_cli.util import parse_comma_list
 
 notes_app = App(name="notes", help="Notes management.")
 
@@ -59,9 +59,9 @@ async def create(
     """Create a new note."""
     kwargs: dict = {}
     if contact_ids:
-        kwargs["contact_ids"] = parse_csv(contact_ids)
+        kwargs["contact_ids"] = parse_comma_list(contact_ids)
     if account_ids:
-        kwargs["account_ids"] = parse_csv(account_ids)
+        kwargs["account_ids"] = parse_comma_list(account_ids)
 
     async with ctx.client() as client:
         result = await client.create_note(content, **kwargs)

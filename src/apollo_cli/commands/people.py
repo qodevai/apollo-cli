@@ -8,7 +8,7 @@ from cyclopts import App, Parameter
 
 from apollo_cli.context import ctx
 from apollo_cli.output import output
-from apollo_cli.util import parse_csv
+from apollo_cli.util import parse_comma_list
 
 people_app = App(name="people", help="People database search.")
 
@@ -25,9 +25,9 @@ async def search(
     if keywords:
         filters["q_keywords"] = keywords
     if titles:
-        filters["person_titles"] = parse_csv(titles)
+        filters["person_titles"] = parse_comma_list(titles)
     if locations:
-        filters["person_locations"] = parse_csv(locations)
+        filters["person_locations"] = parse_comma_list(locations)
 
     async with ctx.client() as client:
         result = await client.search_people(**filters)

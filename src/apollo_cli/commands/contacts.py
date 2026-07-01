@@ -13,7 +13,7 @@ from apollo_cli.formatters.contacts import (
     format_stages_list,
 )
 from apollo_cli.output import output, output_list
-from apollo_cli.util import parse_csv
+from apollo_cli.util import parse_comma_list
 
 contacts_app = App(name="contacts", help="Manage contacts.")
 
@@ -98,7 +98,7 @@ async def update(
     if title:
         fields["title"] = title
     if label_ids:
-        fields["label_ids"] = parse_csv(label_ids)
+        fields["label_ids"] = parse_comma_list(label_ids)
 
     async with ctx.client() as client:
         result = await client.update_contact(id, **fields)

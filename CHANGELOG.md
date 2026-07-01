@@ -8,11 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **internal**: Extracted the inline comma-splitting logic (used in `contacts update --label-ids`, `people search --titles/--locations`, `tasks create --contact-ids`, and `notes create --contact-ids/--account-ids`) into a shared `apollo_cli.util.parse_csv` helper. Behavior is now consistent across every CSV flag.
+- **internal**: Extracted the inline comma-splitting logic (used in `contacts update --label-ids`, `people search --titles/--locations`, `tasks create --contact-ids`, and `notes create --contact-ids/--account-ids`) into a shared `apollo_cli.util.parse_comma_list` helper. Behavior is now consistent across every comma-list flag.
 
 ### Fixed
 
-- **CSV flags**: All comma-separated CLI arguments now silently drop embedded empty segments, whitespace-only tokens, and leading/trailing commas — e.g. `--contact-ids "a,,b"` now sends `["a", "b"]` instead of `["a", "", "b"]`, which Apollo would reject with a 400. Affects every command that takes a CSV flag.
+- **comma-list flags — forgiving on typos, loud on garbage.** All comma-separated CLI arguments now drop embedded empty segments, whitespace-only tokens, and leading/trailing commas — so `--contact-ids "a,,b"` sends `["a", "b"]` instead of `["a", "", "b"]` (which Apollo rejects with a 400). Empty (`""`) or whitespace-only input maps to "flag not provided", but input like `",,,"` — where the user typed *something* that collapses to nothing — now raises a `ValueError` at the CLI boundary instead of silently omitting the flag from the API call. Affects every command that takes a comma-list flag.
 
 ## [0.1.0] - 2026-02-26
 
