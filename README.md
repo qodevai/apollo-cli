@@ -75,8 +75,8 @@ $ qodev-apollo-cli usage
 | **enrich** | `org` | Enrich organization by domain (FREE - no credits) |
 | | `person` | Enrich person by email (1 credit per lookup) |
 | **people** | `search` | Search people database (`--person-titles`, `--q-organization-domains`) |
-| **notes** | `search` | Search notes (`--contact-id`) |
-| | `create` | Create a note (`--contact-ids`, `--note`) |
+| **notes** | `search` | Search notes (`--contact-id`, `--account-id`, `--opportunity-id`) |
+| | `create` | Create a note (`--contact-ids`, `--account-ids`, `--opportunity-ids`, `--content`) |
 | **tasks** | `search` | Search tasks (`--type`, `--status`) |
 | | `create` | Create a task (`--contact-ids`, `--note`, `--due-at`) |
 | **calls** | `search` | Search call activities |
