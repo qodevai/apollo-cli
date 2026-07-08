@@ -75,6 +75,21 @@ def sample_deal():
 
 
 @pytest.fixture
+def sample_conversation():
+    """Sample conversation dict for testing."""
+    return {
+        "id": "test-conversation-321",
+        "topic": "Acme <> QoDev discovery call",
+        "conversation_type": "zoom",
+        "start_time": "2026-06-01T14:00:00Z",
+        "duration": 1800,
+        "host": "Jane Smith",
+        "state": "processed",
+        "participant_names": ["Jane Smith", "John Doe"],
+    }
+
+
+@pytest.fixture
 def sample_pipeline():
     """Sample pipeline dict for testing."""
     return {
