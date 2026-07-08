@@ -29,7 +29,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `contacts search [--query Q] [--stage-id ID] [--linkedin-url URL]` | Search contacts |
+| `contacts search [--query Q] [--stage-id ID] [--stage-name NAME] [--linkedin-url URL]` | Search contacts |
 | `contacts get ID` | Get contact details |
 | `contacts create --first-name F --last-name L [--email E] [--title T] [--company C] [--linkedin-url URL]` | Create contact |
 | `contacts update ID [--title T] [--label-ids IDS]` | Update contact |
@@ -47,8 +47,10 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `deals search [--query Q] [--stage-id ID]` | Search opportunities/deals |
+| `deals search [--query Q] [--stage-id ID] [--stage-name NAME]` | Search opportunities/deals |
 | `deals get ID` | Get deal details |
+| `deals role-types` | List opportunity contact role types |
+| `deals set-role ID --contact-id C [--role-type NAME_OR_ID] [--primary]` | Set/update a contact's role on a deal |
 
 ### pipelines
 
@@ -76,7 +78,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `people search [--person-titles TITLES] [--q-organization-domains DOMAINS]` | Search people database |
+| `people search [--titles T] [--seniorities S] [--locations L] [--organization-domains D]` | Search people database (respects `--limit`/`--page`) |
 
 ### notes
 
@@ -106,6 +108,13 @@ Recorded meetings (Zoom/Teams/Meet) with transcript and AI summary — distinct 
 |---------|-------------|
 | `conversations search [--query TEXT]` | Search recorded conversations |
 | `conversations get ID` | Get a conversation with transcript and AI summary |
+| `conversations transcript ID` | Print just the transcript |
+
+### custom-fields
+
+| Command | Description |
+|---------|-------------|
+| `custom-fields list [--modality contact\|account\|opportunity]` | List custom field definitions |
 
 ### emails
 

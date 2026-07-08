@@ -57,7 +57,7 @@ $ qodev-apollo-cli usage
 
 | Group | Subcommand | Description |
 |---|---|---|
-| **contacts** | `search` | Search contacts (`--query`, `--stage-id`, `--linkedin-url`) |
+| **contacts** | `search` | Search contacts (`--query`, `--stage-id`, `--stage-name`, `--linkedin-url`) |
 | | `get` | Get contact details by ID |
 | | `create` | Create a new contact (`--first-name`, `--last-name`, `--email`, etc.) |
 | | `update` | Update contact (`--title`, `--label-ids`) |
@@ -65,8 +65,10 @@ $ qodev-apollo-cli usage
 | | `stages` | List all contact stages |
 | **accounts** | `search` | Search companies/accounts (`--query`, `--domain`) |
 | | `get` | Get account details by ID |
-| **deals** | `search` | Search opportunities/deals (`--query`, `--stage-id`) |
+| **deals** | `search` | Search opportunities/deals (`--query`, `--stage-id`, `--stage-name`) |
 | | `get` | Get deal details by ID |
+| | `role-types` | List opportunity contact role types |
+| | `set-role` | Set/update a contact's role on a deal (`--contact-id`, `--role-type`, `--primary`) |
 | **pipelines** | `list` | List all deal pipelines |
 | | `get` | Get pipeline details |
 | | `stages` | List stages in a pipeline |
@@ -74,7 +76,7 @@ $ qodev-apollo-cli usage
 | | `get` | Get stage details |
 | **enrich** | `org` | Enrich organization by domain (FREE - no credits) |
 | | `person` | Enrich person by email (1 credit per lookup) |
-| **people** | `search` | Search people database (`--person-titles`, `--q-organization-domains`) |
+| **people** | `search` | Search people database (`--titles`, `--seniorities`, `--locations`, `--organization-domains`) |
 | **notes** | `search` | Search notes (`--contact-id`, `--account-id`, `--opportunity-id`) |
 | | `create` | Create a note (`--contact-ids`, `--account-ids`, `--opportunity-ids`, `--content`) |
 | **tasks** | `search` | Search tasks (`--type`, `--status`) |
@@ -82,6 +84,8 @@ $ qodev-apollo-cli usage
 | **calls** | `search` | Search call activities |
 | **conversations** | `search` | Search recorded conversations (`--query`) |
 | | `get` | Get a conversation with transcript and AI summary |
+| | `transcript` | Print just the transcript of a conversation |
+| **custom-fields** | `list` | List custom field definitions (`--modality`) |
 | **emails** | `search` | Search email activities |
 | **news** | `search` | Search news (`--categories`) |
 | **jobs** | `search` | Search job postings (`--job-titles`, `--company-domains`) |

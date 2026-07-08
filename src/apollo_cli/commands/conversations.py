@@ -7,8 +7,12 @@ from typing import Annotated
 from cyclopts import App, Parameter
 
 from apollo_cli.context import ctx
-from apollo_cli.formatters.conversations import format_conversation_detail, format_conversation_list
-from apollo_cli.output import output, output_list
+from apollo_cli.formatters.conversations import (
+    format_conversation_detail,
+    format_conversation_list,
+    format_transcript,
+)
+from apollo_cli.output import output, output_json, output_list, output_markdown
 
 conversations_app = App(name="conversations", help="Recorded conversations (Zoom/Teams/Meet).")
 
@@ -46,3 +50,18 @@ async def get(
         conversation = await client.get_conversation(id)
 
     output(conversation, ctx=ctx, format_fn=format_conversation_detail)
+
+
+@conversations_app.command
+async def transcript(
+    id: Annotated[str, Parameter(help="Conversation ID")],
+) -> None:
+    """Print just the transcript of a conversation (no metadata or summary)."""
+    async with ctx.client() as client:
+        conversation = await client.get_conversation(id)
+
+    segments = getattr(conversation, "transcript", None) or []
+    if ctx.json_mode:
+        output_json(segments)
+    else:
+        output_markdown(format_transcript(conversation))

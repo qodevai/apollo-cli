@@ -14,7 +14,7 @@ from apollo_cli.formatters.contacts import (
 )
 from apollo_cli.linkedin import apollo_canonical_linkedin_url
 from apollo_cli.output import error, output, output_list
-from apollo_cli.util import parse_comma_list
+from apollo_cli.util import parse_comma_list, resolve_stage_id
 
 contacts_app = App(name="contacts", help="Manage contacts.")
 
@@ -24,6 +24,12 @@ async def search(
     *,
     query: Annotated[str, Parameter(name=["--query", "-q"], help="Search keyword")] = "",
     stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Filter by stage ID")] = None,
+    stage_name: Annotated[
+        str | None,
+        Parameter(
+            name="--stage-name", help="Filter by stage name (resolved to an ID; avoids a `contacts stages` lookup)"
+        ),
+    ] = None,
     linkedin_url: Annotated[str | None, Parameter(name="--linkedin-url", help="Filter by LinkedIn URL")] = None,
 ) -> None:
     """Search contacts by keyword or filter."""
@@ -38,6 +44,11 @@ async def search(
         filters["linkedin_url"] = apollo_canonical_linkedin_url(linkedin_url)
 
     async with ctx.client() as client:
+        if stage_name:
+            stages_ = await client.get_contact_stages()
+            filters.setdefault("contact_stage_ids", []).append(
+                resolve_stage_id(stage_name, stages_, kind="contact stage")
+            )
         result = await client.search_contacts(page=ctx.page, limit=ctx.limit, **filters)
 
     output_list(

@@ -2,6 +2,28 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+
+def _field(item: Any, key: str) -> Any:
+    """Read ``key`` from either a Pydantic model (attr) or a dict."""
+    return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+
+
+def resolve_stage_id(name: str, stages: list[Any], *, kind: str = "stage") -> str:
+    """Resolve a stage *name* (case-insensitive) to its ID from a list of stages.
+
+    ``stages`` items may be Pydantic models or dicts exposing ``name`` and ``id``.
+    Raises ``ValueError`` (surfaced by the CLI as a validation error) listing the
+    available names when there is no match.
+    """
+    target = name.strip().lower()
+    match = next((s for s in stages if (_field(s, "name") or "").lower() == target), None)
+    if match is None:
+        available = ", ".join(sorted(n for s in stages if (n := _field(s, "name"))))
+        raise ValueError(f"No {kind} named {name!r}. Available: {available or '(none)'}")
+    return _field(match, "id")
+
 
 def parse_comma_list(raw: str) -> list[str]:
     """Parse a comma-separated CLI argument into a list of stripped, non-empty tokens.
