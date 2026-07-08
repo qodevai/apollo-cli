@@ -48,7 +48,7 @@ build-backend = "hatchling.build"
 packages = ["src/apollo_cli"]
 
 [tool.uv.sources]
-qodev-apollo-api = { path = "../../libs/apollo" }
+qodev-apollo-api = { path = "../apollo-api" }
 
 [tool.ruff]
 target-version = "py311"
