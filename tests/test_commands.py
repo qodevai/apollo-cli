@@ -375,6 +375,28 @@ class TestPeopleCommands:
         assert data["items"][0]["name"] == "Jane"
         assert data["total"] == 1
 
+    @pytest.mark.asyncio
+    async def test_people_search_merges_people_and_contacts(self, capsys) -> None:
+        """When Apollo returns both `people` and `contacts`, neither half is dropped."""
+        mock_client = MagicMock()
+        mock_client.search_people = AsyncMock(
+            return_value={
+                "people": [{"id": "p1", "name": "Jane"}],
+                "contacts": [{"id": "c1", "name": "John"}],
+                "pagination": {"total_entries": 2},
+            }
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.people import search
+
+            await search(keywords="jane")
+
+        data = json.loads(capsys.readouterr().out)
+        assert {p["name"] for p in data["items"]} == {"Jane", "John"}
+
 
 class TestStageNameFilter:
     @pytest.mark.asyncio
@@ -454,6 +476,30 @@ class TestDealRoleCommands:
         assert by_contact["c-new"]["is_primary"] is True
         assert by_contact["c-old"]["is_primary"] is False  # demoted
         assert by_contact["c-old"]["opportunity_contact_role_type_id"] == "rt-x"  # preserved
+        # New contact without --role-type: the key is omitted, never sent as an explicit null.
+        assert "opportunity_contact_role_type_id" not in by_contact["c-new"]
+
+    @pytest.mark.asyncio
+    async def test_set_role_never_sends_null_role_type(self, capsys) -> None:
+        """An existing role stored without a role type is sent without the key (no null)."""
+        from qodev_apollo_api.models import Deal
+
+        deal = Deal.model_validate(
+            {"id": "d1", "opportunity_contact_roles": [{"id": "r1", "contact_id": "c-old", "is_primary": True}]}
+        )
+        mock_client = MagicMock()
+        mock_client.get_deal = AsyncMock(return_value=deal)
+        mock_client.update_opportunity_roles = AsyncMock(return_value=deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import set_role
+
+            await set_role("d1", contact_id="c-new")
+
+        _, roles = mock_client.update_opportunity_roles.call_args.args
+        assert all("opportunity_contact_role_type_id" not in r for r in roles)
 
 
 class TestCustomFieldsCommand:

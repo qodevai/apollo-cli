@@ -6,6 +6,13 @@ from typing import Any
 
 from apollo_cli.formatters.generic import detail_table, list_table
 
+
+def _get(item: Any, key: str) -> Any:
+    """Read ``key`` from a Pydantic model (attr) or a dict — so the rich detail view
+    renders whether ``get_conversation()`` returns models or raw dicts."""
+    return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+
+
 CONVERSATION_LIST_COLUMNS = [
     ("ID", "id"),
     ("Topic", "topic"),
@@ -42,38 +49,38 @@ def format_conversation_list(items: list[Any], *, total: int = 0, page: int = 1)
 
 def format_conversation_detail(data: Any) -> str:
     """Format a single conversation (with transcript & summary) as a markdown detail view."""
-    topic = getattr(data, "topic", None) or "Conversation"
+    topic = _get(data, "topic") or "Conversation"
     md = detail_table(data, CONVERSATION_DETAIL_FIELDS, title=f"Conversation: {topic}")
 
     # Participants (richer than the participant_names list in the metadata table)
-    participants = getattr(data, "participants_info", None) or []
+    participants = _get(data, "participants_info") or []
     if participants:
         md += "\n\n## Participants\n"
         for p in participants:
-            name = getattr(p, "name", None) or "Unknown"
-            title = getattr(p, "title", None)
-            account = getattr(p, "account_name", None)
-            internal = getattr(p, "is_internal_participant", None)
+            name = _get(p, "name") or "Unknown"
+            title = _get(p, "title")
+            account = _get(p, "account_name")
+            internal = _get(p, "is_internal_participant")
             suffix = ", ".join(x for x in [title, account] if x)
             tag = " (internal)" if internal else ""
             md += f"\n- **{name}**{tag}" + (f" — {suffix}" if suffix else "")
 
     # Associated deals
-    deals = getattr(data, "deals", None) or []
+    deals = _get(data, "deals") or []
     if deals:
         md += "\n\n## Deals\n"
         for d in deals:
-            name = getattr(d, "name", None) or getattr(d, "id", "Unknown")
-            account = getattr(d, "account_name", None)
+            name = _get(d, "name") or _get(d, "id") or "Unknown"
+            account = _get(d, "account_name")
             md += f"\n- {name}" + (f" ({account})" if account else "")
 
     # AI-generated call summary (detail endpoint only)
-    summary = getattr(data, "call_summary", None)
+    summary = _get(data, "call_summary")
     if summary:
         md += _format_summary(summary)
 
     # Transcript (detail endpoint only)
-    if getattr(data, "transcript", None):
+    if _get(data, "transcript"):
         md += "\n\n" + format_transcript(data)
 
     return md
@@ -81,13 +88,13 @@ def format_conversation_detail(data: Any) -> str:
 
 def format_transcript(data: Any) -> str:
     """Render just the transcript of a conversation as `**Speaker:** sentence` lines."""
-    segments = getattr(data, "transcript", None) or []
+    segments = _get(data, "transcript") or []
     if not segments:
         return "## Transcript\n\n_No transcript available._"
     lines = ["## Transcript", ""]
     for seg in segments:
-        speaker = getattr(seg, "participant_name", None) or "Unknown"
-        sentence = getattr(seg, "spoken_sentence", None) or ""
+        speaker = _get(seg, "participant_name") or "Unknown"
+        sentence = _get(seg, "spoken_sentence") or ""
         lines.append(f"- **{speaker}:** {sentence}")
     return "\n".join(lines)
 
@@ -95,10 +102,10 @@ def format_transcript(data: Any) -> str:
 def _format_summary(summary: Any) -> str:
     """Render the AI call summary (outcome, pain points, objections, next steps)."""
     md = "\n\n## Call Summary\n"
-    outcome = getattr(summary, "outcome", None)
+    outcome = _get(summary, "outcome")
     if outcome:
         md += f"\n**Outcome:** {outcome}\n"
-    pricing = getattr(summary, "pricing_discussion", None)
+    pricing = _get(summary, "pricing_discussion")
     if pricing:
         md += f"\n**Pricing discussion:** {pricing}\n"
 
@@ -107,11 +114,11 @@ def _format_summary(summary: Any) -> str:
         ("Objections", "objections", "text"),
         ("Next Steps", "next_steps", "step"),
     ):
-        items = getattr(summary, attr, None) or []
+        items = _get(summary, attr) or []
         if items:
             md += f"\n### {label}\n"
             for item in items:
-                text = getattr(item, field, None) or ""
-                who = getattr(item, "participant_name", None)
+                text = _get(item, field) or ""
+                who = _get(item, "participant_name")
                 md += f"\n- {text}" + (f" — _{who}_" if who else "")
     return md

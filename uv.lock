@@ -472,7 +472,7 @@ wheels = [
 
 [[package]]
 name = "qodev-apollo-api"
-version = "0.3.0"
+version = "0.3.2"
 source = { directory = "../apollo-api" }
 dependencies = [
     { name = "httpx" },
@@ -494,7 +494,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "qodev-apollo-cli"
-version = "1.2.0"
+version = "1.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "cyclopts" },
