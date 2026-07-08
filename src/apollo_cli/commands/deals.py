@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from cyclopts import App, Parameter
+from qodev_apollo_api import RoleAssignment
 
 from apollo_cli.context import ctx
 from apollo_cli.formatters.deals import format_deal_detail, format_deal_list
@@ -163,6 +164,8 @@ async def set_role(
             for r in roles:
                 r["is_primary"] = r["contact_id"] == contact_id
 
-        updated = await client.update_opportunity_roles(id, _clean_roles(roles))
+        # Entries are built dynamically (conditional keys, pop), so they're plain dicts;
+        # cast to the client's RoleAssignment TypedDict at the boundary.
+        updated = await client.update_opportunity_roles(id, cast("list[RoleAssignment]", _clean_roles(roles)))
 
     output(updated, ctx=ctx, format_fn=format_deal_detail)
