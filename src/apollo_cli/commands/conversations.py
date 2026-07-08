@@ -25,6 +25,10 @@ async def search(
     """Search recorded conversations."""
     filters: dict = {}
     if query:
+        # `q_keywords` is Apollo's universal keyword-search param (contacts/accounts/deals/
+        # people all use it). The conversations/search endpoint is undocumented and we
+        # haven't confirmed it honours the filter server-side — if a search returns
+        # everything unfiltered, this is the param to revisit.
         filters["q_keywords"] = query
 
     async with ctx.client() as client:

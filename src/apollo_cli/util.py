@@ -20,9 +20,18 @@ def resolve_stage_id(name: str, stages: list[Any], *, kind: str = "stage") -> st
     target = name.strip().lower()
     match = next((s for s in stages if (_field(s, "name") or "").lower() == target), None)
     if match is None:
-        available = ", ".join(sorted(n for s in stages if (n := _field(s, "name"))))
-        raise ValueError(f"No {kind} named {name!r}. Available: {available or '(none)'}")
+        names = sorted(n for s in stages if (n := _field(s, "name")))
+        raise ValueError(f"No {kind} named {name!r}. Available: {_preview(names)}")
     return _field(match, "id")
+
+
+def _preview(names: list[str], limit: int = 15) -> str:
+    """Render a name list for an error message, capped so it can't get huge."""
+    if not names:
+        return "(none)"
+    if len(names) <= limit:
+        return ", ".join(names)
+    return f"{', '.join(names[:limit])}, … (+{len(names) - limit} more)"
 
 
 def parse_comma_list(raw: str) -> list[str]:

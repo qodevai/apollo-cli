@@ -51,9 +51,9 @@ async def search(
     async with ctx.client() as client:
         result = await client.search_people(**filters)
 
-    # search_people returns the raw Apollo dict; people live under "people" (and
-    # sometimes "contacts" for matched CRM records).
-    items = result.get("people") or result.get("contacts") or []
+    # search_people returns the raw Apollo dict. Results live under "people"; matched
+    # CRM records come back under "contacts". Merge both so we never silently drop half.
+    items = [*(result.get("people") or []), *(result.get("contacts") or [])]
     pagination = result.get("pagination", {})
     total = pagination.get("total_entries", len(items))
 

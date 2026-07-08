@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-08
+
+Follow-ups from code review of the v1.2.0 changes.
+
+### Fixed
+
+- **`deals set-role` no longer sends an explicit `null` role type.** Adding a contact without `--role-type` omitted the `opportunity_contact_role_type_id` key entirely instead of posting `null`, which Apollo may reject.
+- **`people search` no longer drops results.** When Apollo returns both `people` and `contacts` (matched CRM records), both are now shown — previously only the first non-empty list was kept.
+- **Conversation detail view is robust to raw dicts.** The participants/deals/summary/transcript sections read fields via a dict-or-model helper, so they render whether `conversations get` returns models or plain dicts (previously the sections silently rendered empty for dicts).
+- **`--stage-name` errors are bounded.** An unknown stage name lists at most 15 available names (`… (+N more)`) instead of dumping the entire list.
+
+### Note
+
+- `conversations search --query` maps to Apollo's universal `q_keywords` param. The conversations search endpoint is undocumented and keyword filtering hasn't been confirmed server-side; if a search returns everything unfiltered, that param is the thing to revisit.
+
 ## [1.2.0] - 2026-07-08
 
 Usage-driven UX improvements — every item here closes a gap where users had been dropping to raw curl or doing extra lookups.

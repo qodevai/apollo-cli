@@ -68,3 +68,21 @@ def test_detail_formatter_minimal_conversation() -> None:
     assert "Conversation: Quick sync" in md
     assert "## Transcript" not in md
     assert "## Call Summary" not in md
+
+
+def test_detail_formatter_handles_raw_dict() -> None:
+    """The rich detail view renders from a raw dict too, not only Pydantic models."""
+    data = {
+        "id": "c1",
+        "topic": "Dict sync",
+        "participants_info": [{"name": "Jane", "title": "VP", "is_internal_participant": True}],
+        "deals": [{"id": "d1", "name": "Enterprise Deal", "account_name": "Acme"}],
+        "call_summary": {"outcome": "Good", "next_steps": [{"step": "Follow up"}]},
+        "transcript": [{"participant_name": "Jane", "spoken_sentence": "Hello."}],
+    }
+    md = format_conversation_detail(data)
+    assert "Conversation: Dict sync" in md
+    assert "## Participants" in md and "Jane" in md and "(internal)" in md
+    assert "## Deals" in md and "Enterprise Deal" in md
+    assert "## Call Summary" in md and "Good" in md and "Follow up" in md
+    assert "## Transcript" in md and "**Jane:** Hello." in md

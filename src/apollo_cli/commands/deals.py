@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from cyclopts import App, Parameter
+from qodev_apollo_api import RoleAssignment
 
 from apollo_cli.context import ctx
 from apollo_cli.formatters.deals import format_deal_detail, format_deal_list
@@ -86,19 +87,26 @@ async def role_types() -> None:
 
 
 def _existing_roles(deal: Any) -> list[dict]:
-    """Flatten a deal's current opportunity_contact_roles into update_roles entries."""
+    """Flatten a deal's current opportunity_contact_roles into update_roles entries.
+
+    ``opportunity_contact_role_type_id`` is only included when the existing role
+    actually has one — we never send an explicit ``null`` (see ``_clean_roles``).
+    """
     roles: list[dict] = []
     for r in getattr(deal, "opportunity_contact_roles", []) or []:
-        role_type_id = None
-        if r.role:
-            role_type_id = r.role[0].opportunity_contact_role_type_id
-        roles.append(
-            {
-                "contact_id": r.contact_id,
-                "opportunity_contact_role_type_id": role_type_id,
-                "is_primary": bool(r.is_primary),
-            }
-        )
+        entry: dict = {"contact_id": r.contact_id, "is_primary": bool(r.is_primary)}
+        if r.role and r.role[0].opportunity_contact_role_type_id:
+            entry["opportunity_contact_role_type_id"] = r.role[0].opportunity_contact_role_type_id
+        roles.append(entry)
+    return roles
+
+
+def _clean_roles(roles: list[dict]) -> list[dict]:
+    """Drop any ``opportunity_contact_role_type_id`` that is ``None`` so we never POST an
+    explicit null (Apollo may reject roles without a role type — omit the key instead)."""
+    for r in roles:
+        if r.get("opportunity_contact_role_type_id") is None:
+            r.pop("opportunity_contact_role_type_id", None)
     return roles
 
 
@@ -148,7 +156,7 @@ async def set_role(
 
         entry = next((r for r in roles if r["contact_id"] == contact_id), None)
         if entry is None:
-            entry = {"contact_id": contact_id, "opportunity_contact_role_type_id": None, "is_primary": False}
+            entry = {"contact_id": contact_id, "is_primary": False}
             roles.append(entry)
         if role_type_id is not None:
             entry["opportunity_contact_role_type_id"] = role_type_id
@@ -156,6 +164,8 @@ async def set_role(
             for r in roles:
                 r["is_primary"] = r["contact_id"] == contact_id
 
-        updated = await client.update_opportunity_roles(id, roles)
+        # Entries are built dynamically (conditional keys, pop), so they're plain dicts;
+        # cast to the client's RoleAssignment TypedDict at the boundary.
+        updated = await client.update_opportunity_roles(id, cast("list[RoleAssignment]", _clean_roles(roles)))
 
     output(updated, ctx=ctx, format_fn=format_deal_detail)
