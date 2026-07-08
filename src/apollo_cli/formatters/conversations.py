@@ -73,15 +73,23 @@ def format_conversation_detail(data: Any) -> str:
         md += _format_summary(summary)
 
     # Transcript (detail endpoint only)
-    transcript = getattr(data, "transcript", None) or []
-    if transcript:
-        md += "\n\n## Transcript\n"
-        for seg in transcript:
-            speaker = getattr(seg, "participant_name", None) or "Unknown"
-            sentence = getattr(seg, "spoken_sentence", None) or ""
-            md += f"\n- **{speaker}:** {sentence}"
+    if getattr(data, "transcript", None):
+        md += "\n\n" + format_transcript(data)
 
     return md
+
+
+def format_transcript(data: Any) -> str:
+    """Render just the transcript of a conversation as `**Speaker:** sentence` lines."""
+    segments = getattr(data, "transcript", None) or []
+    if not segments:
+        return "## Transcript\n\n_No transcript available._"
+    lines = ["## Transcript", ""]
+    for seg in segments:
+        speaker = getattr(seg, "participant_name", None) or "Unknown"
+        sentence = getattr(seg, "spoken_sentence", None) or ""
+        lines.append(f"- **{speaker}:** {sentence}")
+    return "\n".join(lines)
 
 
 def _format_summary(summary: Any) -> str:

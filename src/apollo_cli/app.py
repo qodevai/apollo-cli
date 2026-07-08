@@ -27,6 +27,7 @@ from apollo_cli.commands.accounts import accounts_app  # noqa: E402
 from apollo_cli.commands.calls import calls_app  # noqa: E402
 from apollo_cli.commands.contacts import contacts_app  # noqa: E402
 from apollo_cli.commands.conversations import conversations_app  # noqa: E402
+from apollo_cli.commands.custom_fields import custom_fields_app  # noqa: E402
 from apollo_cli.commands.deals import deals_app  # noqa: E402
 from apollo_cli.commands.emails import emails_app  # noqa: E402
 from apollo_cli.commands.enrich import enrich_app  # noqa: E402
@@ -52,6 +53,7 @@ _sub_apps = [
     tasks_app,
     calls_app,
     conversations_app,
+    custom_fields_app,
     emails_app,
     news_app,
     jobs_app,

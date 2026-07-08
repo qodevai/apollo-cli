@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-08
+
+Usage-driven UX improvements — every item here closes a gap where users had been dropping to raw curl or doing extra lookups.
+
+### Added
+
+- **people search — company-domain filter.** `people search --organization-domains acme.com,globex.com` (alias `--domains`) finds people at specific companies — the single most common raw-curl workaround (`q_organization_domains_list`). Also adds `--seniorities`, and `people search` now respects the global `--limit`/`--page` (it previously ignored them). Results render as a table instead of a raw dict.
+- **Filter deals/contacts by stage name.** `deals search --stage-name "Negotiation"` and `contacts search --stage-name "Customer"` resolve the name to an ID internally, removing the round-trip through `pipelines stages` / `contacts stages`. An unknown name fails loudly and lists the valid names.
+- **`conversations transcript ID`** — prints just the transcript (no metadata/summary), for when you only want the words.
+- **Deal contact roles.** `deals role-types` lists the available role types; `deals set-role DEAL_ID --contact-id C [--role-type "Decision Maker"] [--primary]` sets/updates a contact's role on a deal (read-modify-write; `--primary` makes them the sole primary contact). Previously only reachable via curl.
+- **`custom-fields list [--modality]`** — lists custom field definitions across contacts/accounts/opportunities.
+
+### Changed
+
+- Requires `qodev-apollo-api>=0.3.0` (for `update_opportunity_roles` and `list_custom_fields`).
+
 ## [1.1.0] - 2026-07-08
 
 ### Added

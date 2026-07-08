@@ -350,6 +350,167 @@ class TestConversationsCommands:
         assert data["topic"] == "Acme <> QoDev discovery call"
 
 
+class TestPeopleCommands:
+    @pytest.mark.asyncio
+    async def test_people_search_domain_and_pagination(self, capsys) -> None:
+        """people search forwards --organization-domains and the global --limit/--page."""
+        mock_client = MagicMock()
+        mock_client.search_people = AsyncMock(
+            return_value={"people": [{"id": "p1", "name": "Jane"}], "pagination": {"total_entries": 1}}
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=50, page=2)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.people import search
+
+            await search(organization_domains="acme.com, globex.com", seniorities="vp,director")
+
+        kwargs = mock_client.search_people.call_args.kwargs
+        assert kwargs["q_organization_domains_list"] == ["acme.com", "globex.com"]
+        assert kwargs["person_seniorities"] == ["vp", "director"]
+        assert kwargs["per_page"] == 50
+        assert kwargs["page"] == 2
+        data = json.loads(capsys.readouterr().out)
+        assert data["items"][0]["name"] == "Jane"
+        assert data["total"] == 1
+
+
+class TestStageNameFilter:
+    @pytest.mark.asyncio
+    async def test_deals_search_stage_name_resolves(self, sample_deal: dict, capsys) -> None:
+        """deals search --stage-name resolves the name to an opportunity_stage_ids filter."""
+        mock_client = MagicMock()
+        mock_client.list_all_stages = AsyncMock(
+            return_value=MockSearchResult(
+                items=[{"id": "st-neg", "name": "Negotiation"}, {"id": "st-won", "name": "Won"}], total=2, page=1
+            )
+        )
+        mock_client.search_deals = AsyncMock(return_value=MockSearchResult(items=[sample_deal], total=1, page=1))
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import search
+
+            await search(stage_name="negotiation")  # case-insensitive
+
+        assert mock_client.search_deals.call_args.kwargs["opportunity_stage_ids"] == ["st-neg"]
+
+    @pytest.mark.asyncio
+    async def test_deals_search_unknown_stage_name_errors(self, capsys) -> None:
+        """An unknown --stage-name is a validation error listing the available names."""
+        mock_client = MagicMock()
+        mock_client.list_all_stages = AsyncMock(
+            return_value=MockSearchResult(items=[{"id": "st-won", "name": "Won"}], total=1, page=1)
+        )
+        mock_client.search_deals = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import search
+
+            with pytest.raises(ValueError, match="No deal stage named 'Nope'"):
+                await search(stage_name="Nope")
+
+        mock_client.search_deals.assert_not_called()
+
+
+class TestDealRoleCommands:
+    @pytest.mark.asyncio
+    async def test_set_role_read_modify_write_primary(self, sample_deal: dict, capsys) -> None:
+        """set-role reads existing roles, adds the contact, and makes it the sole primary."""
+        from qodev_apollo_api.models import Deal
+
+        deal = Deal.model_validate(
+            {
+                "id": "d1",
+                "name": "Enterprise Deal",
+                "opportunity_contact_roles": [
+                    {
+                        "id": "r1",
+                        "contact_id": "c-old",
+                        "is_primary": True,
+                        "role": [{"opportunity_contact_role_type_id": "rt-x"}],
+                    },
+                ],
+            }
+        )
+        mock_client = MagicMock()
+        mock_client.get_deal = AsyncMock(return_value=deal)
+        mock_client.update_opportunity_roles = AsyncMock(return_value=deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import set_role
+
+            await set_role("d1", contact_id="c-new", primary=True)
+
+        opp_id, roles = mock_client.update_opportunity_roles.call_args.args
+        assert opp_id == "d1"
+        by_contact = {r["contact_id"]: r for r in roles}
+        assert by_contact["c-new"]["is_primary"] is True
+        assert by_contact["c-old"]["is_primary"] is False  # demoted
+        assert by_contact["c-old"]["opportunity_contact_role_type_id"] == "rt-x"  # preserved
+
+
+class TestCustomFieldsCommand:
+    @pytest.mark.asyncio
+    async def test_custom_fields_list_filters_by_modality(self, capsys) -> None:
+        """custom-fields list --modality filters the returned definitions client-side."""
+        from qodev_apollo_api.models import CustomField
+
+        fields = [
+            CustomField.model_validate({"id": "f1", "modality": "contact", "name": "First Message", "type": "date"}),
+            CustomField.model_validate({"id": "f2", "modality": "opportunity", "name": "Region", "type": "text"}),
+        ]
+        mock_client = MagicMock()
+        mock_client.list_custom_fields = AsyncMock(return_value=fields)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.custom_fields import list_fields
+
+            await list_fields(modality="opportunity")
+
+        data = json.loads(capsys.readouterr().out)
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == "Region"
+
+
+class TestConversationTranscript:
+    @pytest.mark.asyncio
+    async def test_conversations_transcript_json(self, capsys) -> None:
+        """conversations transcript emits just the transcript segments in JSON mode."""
+        from qodev_apollo_api.models import ConversationDetail
+
+        detail = ConversationDetail.model_validate(
+            {
+                "id": "c1",
+                "topic": "Sync",
+                "transcript": [
+                    {"id": "t1", "participant_name": "Jane", "spoken_sentence": "Hi."},
+                    {"id": "t2", "participant_name": "John", "spoken_sentence": "Hello."},
+                ],
+            }
+        )
+        mock_client = MagicMock()
+        mock_client.get_conversation = AsyncMock(return_value=detail)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.conversations import transcript
+
+            await transcript(id="c1")
+
+        data = json.loads(capsys.readouterr().out)
+        assert [seg["spoken_sentence"] for seg in data] == ["Hi.", "Hello."]
+
+
 class TestUsageCommand:
     @pytest.mark.asyncio
     async def test_usage_json(self, sample_usage: dict, capsys) -> None:
