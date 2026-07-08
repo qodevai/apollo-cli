@@ -291,6 +291,65 @@ class TestDealsCommands:
         assert data["stage_name"] == "Negotiation"
 
 
+class TestConversationsCommands:
+    @pytest.mark.asyncio
+    async def test_conversations_search_json(self, sample_conversation: dict, capsys) -> None:
+        """Test conversations search in JSON mode."""
+        mock_client = MagicMock()
+        mock_client.search_conversations = AsyncMock(
+            return_value=MockSearchResult(items=[sample_conversation], total=1, page=1)
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.conversations import search
+
+            await search()
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["items"][0]["id"] == "test-conversation-321"
+        assert data["items"][0]["conversation_type"] == "zoom"
+        assert data["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_conversations_search_with_query(self, sample_conversation: dict, capsys) -> None:
+        """Test conversations search forwards the keyword as q_keywords."""
+        mock_client = MagicMock()
+        mock_client.search_conversations = AsyncMock(
+            return_value=MockSearchResult(items=[sample_conversation], total=1, page=1)
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.conversations import search
+
+            await search(query="discovery")
+
+        mock_client.search_conversations.assert_called_once()
+        assert mock_client.search_conversations.call_args.kwargs["q_keywords"] == "discovery"
+
+    @pytest.mark.asyncio
+    async def test_conversations_get(self, sample_conversation: dict, capsys) -> None:
+        """Test conversations get command."""
+        mock_client = MagicMock()
+        mock_client.get_conversation = AsyncMock(return_value=sample_conversation)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.conversations import get
+
+            await get(id="test-conversation-321")
+
+        mock_client.get_conversation.assert_called_once_with("test-conversation-321")
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["topic"] == "Acme <> QoDev discovery call"
+
+
 class TestUsageCommand:
     @pytest.mark.asyncio
     async def test_usage_json(self, sample_usage: dict, capsys) -> None:

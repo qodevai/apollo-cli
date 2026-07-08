@@ -98,6 +98,15 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 |---------|-------------|
 | `calls search` | Search call activities |
 
+### conversations
+
+Recorded meetings (Zoom/Teams/Meet) with transcript and AI summary — distinct from `calls` (dialer activity).
+
+| Command | Description |
+|---------|-------------|
+| `conversations search [--query TEXT]` | Search recorded conversations |
+| `conversations get ID` | Get a conversation with transcript and AI summary |
+
 ### emails
 
 | Command | Description |

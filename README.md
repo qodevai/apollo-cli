@@ -80,6 +80,8 @@ $ qodev-apollo-cli usage
 | **tasks** | `search` | Search tasks (`--type`, `--status`) |
 | | `create` | Create a task (`--contact-ids`, `--note`, `--due-at`) |
 | **calls** | `search` | Search call activities |
+| **conversations** | `search` | Search recorded conversations (`--query`) |
+| | `get` | Get a conversation with transcript and AI summary |
 | **emails** | `search` | Search email activities |
 | **news** | `search` | Search news (`--categories`) |
 | **jobs** | `search` | Search job postings (`--job-titles`, `--company-domains`) |

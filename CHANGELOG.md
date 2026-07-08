@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-07-08
+
+### Added
+
+- **conversations**: new command group exposing the recorded-conversation endpoints (Zoom/Teams/Meet). `conversations search [--query]` lists conversations; `conversations get ID` returns the full detail including transcript and AI call summary (outcome, pain points, objections, next steps). The underlying `qodev-apollo-api` client already supported `search_conversations`/`get_conversation` — only the CLI surface was missing. Note this is distinct from `calls`, which covers dialer/phone-call activity, not recorded meetings.
+
 ## [1.0.0] - 2026-07-01
 
 ### Added
