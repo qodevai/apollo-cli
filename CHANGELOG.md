@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-09
+
+### Added
+
+- `deals create` command — create a deal/opportunity from the CLI: `deals create --name "…" [--owner-id] [--account-id] [--amount] [--stage-id | --stage-name] [--closed-date]`. `--name` is the only required flag; `--stage-name` resolves to an ID via the stage list (same helper as `deals search`), and passing both `--stage-id` and `--stage-name` is a validation error. Requires a master Apollo API key (non-master keys get a 403).
+
+### Changed
+
+- Require `qodev-apollo-api>=0.4.0` (adds `create_deal`, and ships the fixed `update_opportunity_roles` payload so `deals set-role` now works, plus `search_accounts` filter validation).
+
 ## [1.2.1] - 2026-07-08
 
 Follow-ups from code review of the v1.2.0 changes.
