@@ -66,6 +66,50 @@ async def get(
     output(deal, ctx=ctx, format_fn=format_deal_detail)
 
 
+@deals_app.command
+async def create(
+    *,
+    name: Annotated[str, Parameter(name="--name", help="Deal name (required)")],
+    owner_id: Annotated[str | None, Parameter(name="--owner-id", help="Deal owner (team member) ID")] = None,
+    account_id: Annotated[str | None, Parameter(name="--account-id", help="Target account/company ID")] = None,
+    amount: Annotated[float | None, Parameter(name="--amount", help="Deal value (no currency symbol)")] = None,
+    stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Deal stage ID")] = None,
+    stage_name: Annotated[
+        str | None,
+        Parameter(name="--stage-name", help="Deal stage name (resolved to an ID; avoids a `pipelines stages` lookup)"),
+    ] = None,
+    closed_date: Annotated[str | None, Parameter(name="--closed-date", help="Expected close date (YYYY-MM-DD)")] = None,
+) -> None:
+    """Create a new deal/opportunity.
+
+    Requires a master Apollo API key (non-master keys get a 403). ``--name`` is the
+    only required field. Use ``--stage-name`` to set the stage by name instead of ID.
+    """
+    if stage_id and stage_name:
+        error("Pass either --stage-id or --stage-name, not both.", ctx=ctx, code="conflicting_args", exit_code=2)
+        return
+
+    fields: dict[str, Any] = {}
+    if owner_id:
+        fields["owner_id"] = owner_id
+    if account_id:
+        fields["account_id"] = account_id
+    if amount is not None:
+        fields["amount"] = amount
+    if closed_date:
+        fields["closed_date"] = closed_date
+
+    async with ctx.client() as client:
+        if stage_name:
+            all_stages = await client.list_all_stages()
+            stage_id = resolve_stage_id(stage_name, all_stages.items, kind="deal stage")
+        if stage_id:
+            fields["opportunity_stage_id"] = stage_id
+        deal = await client.create_deal(name, **fields)
+
+    output(deal, ctx=ctx, format_fn=format_deal_detail)
+
+
 ROLE_TYPE_COLUMNS = [("ID", "id"), ("Name", "name"), ("Display Order", "display_order")]
 
 
