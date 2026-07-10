@@ -33,7 +33,6 @@ from apollo_cli.commands.emails import emails_app  # noqa: E402
 from apollo_cli.commands.enrich import enrich_app  # noqa: E402
 from apollo_cli.commands.install import install_app  # noqa: E402
 from apollo_cli.commands.jobs import jobs_app  # noqa: E402
-from apollo_cli.commands.news import news_app  # noqa: E402
 from apollo_cli.commands.notes import notes_app  # noqa: E402
 from apollo_cli.commands.people import people_app  # noqa: E402
 from apollo_cli.commands.pipelines import pipelines_app, stages_app  # noqa: E402
@@ -55,7 +54,6 @@ _sub_apps = [
     conversations_app,
     custom_fields_app,
     emails_app,
-    news_app,
     jobs_app,
     usage_app,
     install_app,
