@@ -36,7 +36,7 @@ qodev-apollo-cli --json pipelines stages <pipeline-id> | jq '.items[] | {name, i
 # Search all deals
 qodev-apollo-cli deals search
 
-# Search by keyword
+# Search by deal name (--query matches the deal name, not free keywords)
 qodev-apollo-cli deals search --query "enterprise"
 
 # Filter by stage

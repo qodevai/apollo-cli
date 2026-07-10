@@ -19,7 +19,7 @@ deals_app = App(name="deals", help="Manage deals/opportunities.")
 @deals_app.command
 async def search(
     *,
-    query: Annotated[str, Parameter(name=["--query", "-q"], help="Search keyword")] = "",
+    query: Annotated[str, Parameter(name=["--query", "-q"], help="Search by deal name")] = "",
     stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Filter by deal stage ID")] = None,
     stage_name: Annotated[
         str | None,
@@ -28,10 +28,12 @@ async def search(
         ),
     ] = None,
 ) -> None:
-    """Search deals by keyword or filter."""
+    """Search deals by name or filter."""
     filters: dict = {}
     if query:
-        filters["q_keywords"] = query
+        # Deal name search is q_opportunity_name — Apollo silently ignores
+        # q_keywords on /opportunities/search (it returns every deal).
+        filters["q_opportunity_name"] = query
     stage_ids: list[str] = []
     if stage_id:
         stage_ids.append(stage_id)

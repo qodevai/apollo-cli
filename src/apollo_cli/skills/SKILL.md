@@ -47,8 +47,9 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `deals search [--query Q] [--stage-id ID] [--stage-name NAME]` | Search opportunities/deals |
+| `deals search [--query Q] [--stage-id ID] [--stage-name NAME]` | Search deals. `--query` matches the **deal name** (`q_opportunity_name`) |
 | `deals get ID` | Get deal details |
+| `deals create --name N [--owner-id ID] [--account-id ID] [--amount N] [--stage-id ID \| --stage-name NAME] [--closed-date YYYY-MM-DD]` | Create a deal (needs a master API key) |
 | `deals role-types` | List opportunity contact role types |
 | `deals set-role ID --contact-id C [--role-type NAME_OR_ID] [--primary]` | Set/update a contact's role on a deal |
 
@@ -78,7 +79,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 
 | Command | Description |
 |---------|-------------|
-| `people search [--titles T] [--seniorities S] [--locations L] [--organization-domains D]` | Search people database (respects `--limit`/`--page`) |
+| `people search [--keywords K] [--titles T] [--seniorities S] [--locations L] [--organization-domains D]` | Search people database (respects `--limit`/`--page`). Returns teaser data only — no email/linkedin without enrichment. See **Search filter formats** below |
 
 ### notes
 
@@ -122,23 +123,43 @@ Recorded meetings (Zoom/Teams/Meet) with transcript and AI summary — distinct 
 |---------|-------------|
 | `emails search` | Search email activities |
 
-### news
-
-| Command | Description |
-|---------|-------------|
-| `news search [--categories CATS]` | Search news |
-
 ### jobs
 
 | Command | Description |
 |---------|-------------|
-| `jobs search [--job-titles TITLES] [--company-domains DOMAINS]` | Search job postings |
+| `jobs list ACCOUNT_ID` | List job postings for an account's linked organization |
 
 ### usage
 
 | Command | Description |
 |---------|-------------|
 | `usage` | Show API usage stats and rate limits |
+
+## Search filter formats
+
+Apollo **silently ignores** a filter whose value is in the wrong format (it returns an
+unfiltered/whole page that looks like a real match) — so getting the format right matters.
+These are empirically verified (each measurably narrows the result count):
+
+**`people search`**
+| Filter | Format | Notes |
+|--------|--------|-------|
+| `--keywords` | free text | names / titles / keywords |
+| `--titles` | comma list of titles | e.g. `--titles "CEO,VP Sales"` |
+| `--seniorities` | **lowercase enums** | `owner, founder, c_suite, partner, vp, head, director, manager, senior, entry, intern`. `"VP"` / `"vice president"` match **nothing** |
+| `--locations` | country name, **2-letter code** (`US`), or `"City, State, Country"` | `US` ≡ `United States` |
+| `--organization-domains` | comma list of domains | e.g. `acme.com,globex.com` |
+
+Raw API (via `qodev_apollo_api`) also accepts, on people search:
+`organization_num_employees_ranges` as **`"min,max"` comma** strings (`["1,10"]`, `["1000,5000"]` — a dash `"1-10"` is silently ignored); `revenue_range`/`organization_num_jobs_range` as `{"min":N,"max":N}`; `contact_email_status` as `verified|unverified|likely to engage|unavailable`; `currently_using_any_of_technology_uids` as a list of tech UIDs.
+
+**`deals search`** — `--query` searches the **deal name** (`q_opportunity_name`). *(Plain keyword search is not supported by Apollo for deals.)*
+
+**`contacts search`** — `--linkedin-url` must be a real LinkedIn profile URL; the CLI canonicalizes it to Apollo's stored form (`http://www.linkedin.com/in/<slug>`). `--query` is free-text keywords.
+
+**`accounts search`** — `--query` is a company-name keyword (`q_organization_name`).
+
+**Stage filters** (`--stage-id`/`--stage-name` on contacts/deals) take a stage the account actually has — list them with `contacts stages` / `pipelines stages`.
 
 ## Exit Codes
 
