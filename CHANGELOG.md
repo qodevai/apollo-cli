@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-10
+
+### Fixed
+
+- `deals search --query` now searches the **deal name** (`q_opportunity_name`). Apollo silently ignores `q_keywords` on `/opportunities/search`, so name search never actually filtered before.
+- `jobs list` renders the organization job-postings shape (`Title/City/State/URL/Posted`) returned by the fixed API.
+
+### Changed
+
+- Require `qodev-apollo-api>=0.5.0` (people `api_search`, deal name param, repaired `list_*` endpoints, search-filter validation).
+- **Skill** (`SKILL.md` + references): added a "Search filter formats" section (seniority enums, location formats, `"min,max"` employee ranges, dict ranges, deal name search, canonical `linkedin_url`); documented `deals create` and `people --keywords`.
+
+### Removed
+
+- **Breaking:** `news list` and `calls list` commands — the underlying Apollo routes were removed (`list_account_news` / `list_contact_calls` are gone from the API). `calls search` remains.
+
 ## [1.3.0] - 2026-07-09
 
 ### Added
