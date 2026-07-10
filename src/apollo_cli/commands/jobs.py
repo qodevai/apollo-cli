@@ -14,8 +14,8 @@ jobs_app = App(name="jobs", help="Job postings.")
 
 JOBS_LIST_COLUMNS = [
     ("Title", "title"),
-    ("Location", "location"),
-    ("Department", "department"),
+    ("City", "city"),
+    ("State", "state"),
     ("URL", "url"),
     ("Posted", "posted_at"),
 ]

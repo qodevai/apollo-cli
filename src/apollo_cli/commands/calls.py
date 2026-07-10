@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from cyclopts import App, Parameter
+from cyclopts import App
 
 from apollo_cli.context import ctx
 from apollo_cli.formatters.generic import list_table
-from apollo_cli.output import output_json, output_list, output_markdown
+from apollo_cli.output import output_list
 
 calls_app = App(name="calls", help="Call activity.")
 
@@ -37,18 +35,3 @@ async def search() -> None:
         format_fn=lambda items, **kw: list_table(items, CALL_LIST_COLUMNS, title="Calls", **kw),
         resource_name="Calls",
     )
-
-
-@calls_app.command(name="list")
-async def list_contact_calls(
-    contact_id: Annotated[str, Parameter(help="Contact ID")],
-) -> None:
-    """List calls for a specific contact."""
-    async with ctx.client() as client:
-        result = await client.list_contact_calls(contact_id)
-
-    if ctx.json_mode:
-        output_json(result)
-    else:
-        md = list_table(result, CALL_LIST_COLUMNS, title="Contact Calls", total=len(result), page=1)
-        output_markdown(md)
