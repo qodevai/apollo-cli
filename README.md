@@ -80,7 +80,8 @@ $ qodev-apollo-cli usage
 | **notes** | `search` | Search notes (`--contact-id`, `--account-id`, `--opportunity-id`) |
 | | `create` | Create a note (`--contact-ids`, `--account-ids`, `--opportunity-ids`, `--content`) |
 | **tasks** | `search` | Search tasks (`--type`, `--status`) |
-| | `create` | Create a task (`--contact-ids`, `--note`, `--due-at`) |
+| | `create` | Create a task (`--contact-ids`, `--note`, `--user-id`, `--due-at`, `--title`) |
+| | `connect` | Queue a LinkedIn connection request, no message by default (`--contact-id`, `--note`, `--title`) |
 | **calls** | `search` | Search call activities |
 | **conversations** | `search` | Search recorded conversations (`--query`) |
 | | `get` | Get a conversation with transcript and AI summary |

@@ -726,3 +726,83 @@ class TestNotesCommands:
         assert call_kwargs["contact_ids"] == ["c1"]
         assert call_kwargs["account_ids"] == ["a1"]
         assert call_kwargs["opportunity_ids"] == ["d1"]
+
+
+class TestTasksCommands:
+    @pytest.mark.asyncio
+    async def test_create_passes_owner_due_and_title(self) -> None:
+        """--user-id / --due-at / --title reach the client."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t1"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import create
+
+            await create(
+                contact_ids="c1",
+                note="Follow up",
+                user_id="u1",
+                due_at="2026-09-22T08:00:00Z",
+                title="Internal title",
+            )
+
+        kwargs = mock_client.create_task.call_args.kwargs
+        assert kwargs["user_id"] == "u1"
+        assert kwargs["due_at"] == "2026-09-22T08:00:00Z"
+        assert kwargs["title"] == "Internal title"
+
+    @pytest.mark.asyncio
+    async def test_create_omits_unset_optionals(self) -> None:
+        """Optional task fields stay out of the call when not given."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t2"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import create
+
+            await create(contact_ids="c1")
+
+        kwargs = mock_client.create_task.call_args.kwargs
+        assert kwargs["note"] is None
+        assert "user_id" not in kwargs
+        assert "due_at" not in kwargs
+        assert "title" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_connect_sends_empty_note(self) -> None:
+        """A connection request carries no message and defaults to high priority."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t3"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import connect
+
+            await connect(contact_id="c1", user_id="u1", title="Connect Jane Doe")
+
+        kwargs = mock_client.create_task.call_args.kwargs
+        assert kwargs["contact_ids"] == ["c1"]
+        assert kwargs["note"] is None
+        assert kwargs["type"] == "linkedin_step_connect"
+        assert kwargs["priority"] == "high"
+        assert kwargs["title"] == "Connect Jane Doe"
+
+    @pytest.mark.asyncio
+    async def test_connect_forwards_a_note_when_given(self) -> None:
+        """--note is supported; it travels with the invitation when supplied."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t4"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import connect
+
+            await connect(contact_id="c1", note="Hi Jane, ...")
+
+        assert mock_client.create_task.call_args.kwargs["note"] == "Hi Jane, ..."
