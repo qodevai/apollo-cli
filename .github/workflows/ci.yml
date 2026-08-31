@@ -27,9 +27,18 @@ jobs:
       - run: uv run mypy src/apollo_cli/
 
   test:
+    # Every version in requires-python (>=3.11). 3.14 removed importlib.abc.Traversable,
+    # which broke the CLI at import while CI, pinning nothing, stayed green.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
+    name: test (py${{ matrix.python-version }})
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync --all-extras
-      - run: uv run pytest -v
+      - run: uv sync --all-extras --python ${{ matrix.python-version }}
+      - run: uv run --python ${{ matrix.python-version }} pytest -v
+      # the import path that broke on 3.14 is only exercised by actually starting the CLI
+      - run: uv run --python ${{ matrix.python-version }} qodev-apollo-cli --help
