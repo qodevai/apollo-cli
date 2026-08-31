@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CLI could not start at all on Python 3.14.** `commands/install.py` imported
+  `Traversable` from `importlib.abc`, which was deprecated in 3.12 and **removed in
+  3.14**, so `qodev-apollo-cli` raised `ImportError` on import for anyone on 3.14 —
+  and `requires-python` claims `>=3.11`. Now imported from `importlib.resources.abc`
+  (available since 3.11). A test asserts the deprecated path stays out of the source.
+
 ## [1.5.0] - 2026-08-31
 
 ### Added
