@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
+import apollo_cli.commands.install as install_module
 from apollo_cli.commands.install import _install_skills
 
 
@@ -45,3 +47,16 @@ class TestInstall:
         assert result_dest == dest
         assert not old_file.exists()  # Old file should be removed
         assert (dest / "SKILL.md").exists()
+
+    def test_does_not_use_the_removed_importlib_abc_path(self) -> None:
+        """Guards the Traversable import path.
+
+        `importlib.abc.Traversable` warns on 3.13 and was REMOVED in 3.14, where
+        importing this module raised ImportError and the CLI could not start at
+        all. The canonical location is `importlib.resources.abc`. Asserted on the
+        source because a runtime check cannot see it: on 3.13 both paths resolve
+        to the same object, and Python's warning registry suppresses the repeat.
+        """
+        source = inspect.getsource(install_module)
+        assert "from importlib.abc import" not in source
+        assert "from importlib.resources.abc import Traversable" in source
