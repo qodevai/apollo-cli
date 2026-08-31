@@ -13,6 +13,19 @@ from apollo_cli.util import parse_comma_list
 
 tasks_app = App(name="tasks", help="Task management.")
 
+
+def _task_extras(*, user_id: str | None, due_at: str | None, title: str | None) -> dict[str, str]:
+    """Collect the optional task fields, omitting the ones left unset."""
+    extra: dict[str, str] = {}
+    if user_id is not None:
+        extra["user_id"] = user_id
+    if due_at is not None:
+        extra["due_at"] = due_at
+    if title is not None:
+        extra["title"] = title
+    return extra
+
+
 TASK_LIST_COLUMNS = [
     ("ID", "id"),
     ("Subject", "subject"),
@@ -54,15 +67,66 @@ async def search(
 async def create(
     *,
     contact_ids: Annotated[str, Parameter(name="--contact-ids", help="Comma-separated contact IDs")],
-    note: Annotated[str, Parameter(name="--note", help="Task description")],
+    note: Annotated[str | None, Parameter(name="--note", help="Task description")] = None,
     type: Annotated[str, Parameter(name="--type", help="Task type")] = "action_item",
     priority: Annotated[str, Parameter(name="--priority", help="Priority (high, medium, low)")] = "medium",
+    user_id: Annotated[
+        str | None,
+        Parameter(name="--user-id", help="Task owner. Apollo rejects creation without a valid owner"),
+    ] = None,
+    due_at: Annotated[
+        str | None, Parameter(name="--due-at", help="Due date, ISO 8601 (e.g. 2026-09-22T08:00:00Z)")
+    ] = None,
+    title: Annotated[
+        str | None, Parameter(name="--title", help="Task title shown in Apollo (internal, never sent)")
+    ] = None,
 ) -> None:
     """Create a new task."""
     ids = parse_comma_list(contact_ids)
+    extra = _task_extras(user_id=user_id, due_at=due_at, title=title)
 
     async with ctx.client() as client:
-        result = await client.create_task(contact_ids=ids, note=note, type=type, priority=priority)
+        result = await client.create_task(contact_ids=ids, note=note, type=type, priority=priority, **extra)
+
+    output(result, ctx=ctx)
+
+
+@tasks_app.command
+async def connect(
+    *,
+    contact_id: Annotated[str, Parameter(name="--contact-id", help="Contact to send the request to")],
+    note: Annotated[
+        str | None,
+        Parameter(name="--note", help="Text sent WITH the invitation. Omitted (default) = no message"),
+    ] = None,
+    user_id: Annotated[
+        str | None,
+        Parameter(name="--user-id", help="Task owner. Apollo rejects creation without a valid owner"),
+    ] = None,
+    due_at: Annotated[
+        str | None, Parameter(name="--due-at", help="Due date, ISO 8601 (e.g. 2026-09-22T08:00:00Z)")
+    ] = None,
+    title: Annotated[
+        str | None, Parameter(name="--title", help="Task title shown in Apollo (internal, never sent)")
+    ] = None,
+    priority: Annotated[str, Parameter(name="--priority", help="Priority (high, medium, low)")] = "high",
+) -> None:
+    """Queue a LinkedIn connection request, by default without a message.
+
+    On a linkedin_step_connect task the note travels with the invitation, so
+    --note is omitted by default and anything you pass there is seen by the
+    recipient. Put internal context in --title; the contact never sees it.
+    """
+    extra = _task_extras(user_id=user_id, due_at=due_at, title=title)
+
+    async with ctx.client() as client:
+        result = await client.create_task(
+            contact_ids=[contact_id],
+            note=note,
+            type="linkedin_step_connect",
+            priority=priority,
+            **extra,
+        )
 
     output(result, ctx=ctx)
 

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `tasks create` accepts `--user-id`, `--due-at` and `--title`. Apollo rejects task
+  creation with `"Invalid user or creator id"` unless an owner is passed, and there
+  was previously no way to set a due date from the CLI at all.
+- `tasks connect --contact-id` queues a LinkedIn connection request, **by default
+  without a message**. On a `linkedin_step_connect` task the note travels with the
+  invitation, so `--note` is omitted unless you pass one; internal context goes in
+  `--title`, which the contact never sees.
+
 ## [1.4.0] - 2026-07-10
 
 ### Fixed
