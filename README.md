@@ -60,13 +60,15 @@ $ qodev-apollo-cli usage
 | **contacts** | `search` | Search contacts (`--query`, `--stage-id`, `--stage-name`, `--linkedin-url`) |
 | | `get` | Get contact details by ID |
 | | `create` | Create a new contact (`--first-name`, `--last-name`, `--email`, etc.) |
-| | `update` | Update contact (`--title`, `--label-ids`) |
+| | `update` | Update contact (`--title`, `--label-ids`, `--account-id`, `--email`, `--first-name`, `--last-name`) |
 | | `upsert-by-linkedin` | Get or create a contact by LinkedIn URL (`--name`, `--title`, `--stage-id`) |
 | | `stages` | List all contact stages |
 | **accounts** | `search` | Search companies/accounts (`--query`, `--domain`) |
 | | `get` | Get account details by ID |
 | **deals** | `search` | Search opportunities/deals (`--query`, `--stage-id`, `--stage-name`) |
 | | `get` | Get deal details by ID |
+| | `create` | Create a deal (`--name`, `--account-id`, `--amount`, `--stage-id`/`--stage-name`, `--closed-date`) |
+| | `update` | Update a deal (`--name`, `--amount`, `--stage-id`/`--stage-name`, `--closed-date`, `--account-id`, `--owner-id`, `--next-step`, `--next-step-date`, `--description`) |
 | | `role-types` | List opportunity contact role types |
 | | `set-role` | Set/update a contact's role on a deal (`--contact-id`, `--role-type`, `--primary`) |
 | **pipelines** | `list` | List all deal pipelines |
@@ -78,9 +80,12 @@ $ qodev-apollo-cli usage
 | | `person` | Enrich person by email (1 credit per lookup) |
 | **people** | `search` | Search people database (`--titles`, `--seniorities`, `--locations`, `--organization-domains`) |
 | **notes** | `search` | Search notes (`--contact-id`, `--account-id`, `--opportunity-id`) |
+| | `get` | Get a note by ID |
 | | `create` | Create a note (`--contact-ids`, `--account-ids`, `--opportunity-ids`, `--content`) |
 | **tasks** | `search` | Search tasks (`--type`, `--status`) |
 | | `create` | Create a task (`--contact-ids`, `--note`, `--user-id`, `--due-at`, `--title`) |
+| | `update` | Update a task (`--note`, `--due-at`, `--status`, `--priority`) |
+| | `complete` | Mark a task as completed (`--note`) |
 | | `connect` | Queue a LinkedIn connection request, no message by default (`--contact-id`, `--note`, `--title`) |
 | **calls** | `search` | Search call activities |
 | **conversations** | `search` | Search recorded conversations (`--query`) |
@@ -121,7 +126,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 | `0` | Success |
 | `80` | Authentication error (invalid API key) |
 | `81` | Rate limit exceeded |
-| `82` | API error (server error, invalid request) |
+| `82` | API error (server error, invalid request, or `deals set-role` failing loud when Apollo reports success but a read-back shows the role wasn't persisted) |
 | `83` | Validation error (missing required fields) |
 
 ## JSON Output
@@ -170,6 +175,27 @@ qodev-apollo-cli pipelines stages <pipeline-id>
 # Search deals in specific stage
 qodev-apollo-cli deals search --stage-id <stage-id>
 ```
+
+### Updating deals and tasks
+
+```bash
+# Move a deal forward: set the next step, its date, and the stage by name
+qodev-apollo-cli deals update <deal-id> \
+  --next-step "Send contract" --next-step-date 2026-09-07 --stage-name "Negotiation"
+
+# Reassign a deal to a different account/owner
+qodev-apollo-cli deals update <deal-id> --account-id <account-id> --owner-id <user-id>
+
+# Reschedule a task
+qodev-apollo-cli tasks update <task-id> --due-at 2026-09-09 --status scheduled
+```
+
+`--due-at` (on `tasks create`, `tasks connect`, and `tasks update`) accepts:
+- `YYYY-MM-DD` — defaults to **09:00 Europe/Berlin**
+- `YYYY-MM-DDTHH:MM` (no timezone) — assumed Europe/Berlin
+- a full ISO 8601 datetime with its own offset (e.g. `2026-09-09T07:00:00Z`)
+
+All forms are converted to UTC before being sent to Apollo.
 
 ### LinkedIn integration
 
