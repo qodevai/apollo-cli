@@ -6,7 +6,7 @@ import sys
 from typing import Annotated
 
 from cyclopts import App, Group, Parameter
-from qodev_apollo_api import APIError, AuthenticationError, RateLimitError
+from qodev_apollo_api import APIError, AuthenticationError, RateLimitError, RoleAssignmentError
 
 import apollo_cli.context as _ctx
 
@@ -104,6 +104,10 @@ def launcher(
         _handle_error(msg, code="rate_limit", exit_code=EXIT_RATE_LIMIT)
     except APIError as exc:
         _handle_error(str(exc), code="api_error", exit_code=EXIT_API)
+    except RoleAssignmentError as exc:
+        # Apollo reported a successful set-role write that a read-back showed was
+        # never persisted — treat it the same as any other API-layer failure.
+        _handle_error(str(exc), code="role_assignment_failed", exit_code=EXIT_API)
     except ValueError as exc:
         _handle_error(str(exc), code="validation", exit_code=EXIT_VALIDATION)
     except SystemExit:
