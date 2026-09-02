@@ -290,6 +290,58 @@ class TestDealsCommands:
         assert data["name"] == "Enterprise Deal"
         assert data["stage_name"] == "Negotiation"
 
+    @pytest.mark.asyncio
+    async def test_deals_update_passes_only_given_fields(self, sample_deal: dict, capsys) -> None:
+        """deals update forwards only the fields that were provided."""
+        mock_client = MagicMock()
+        mock_client.update_opportunity = AsyncMock(return_value=sample_deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            await update("test-deal-789", next_step="Send contract", next_step_date="2026-09-07")
+
+        deal_id = mock_client.update_opportunity.call_args.args[0]
+        fields = mock_client.update_opportunity.call_args.kwargs
+        assert deal_id == "test-deal-789"
+        assert fields == {"next_step": "Send contract", "next_step_date": "2026-09-07"}
+
+    @pytest.mark.asyncio
+    async def test_deals_update_resolves_stage_name(self, sample_deal: dict, capsys) -> None:
+        """deals update --stage-name resolves to opportunity_stage_id."""
+        mock_client = MagicMock()
+        mock_client.list_all_stages = AsyncMock(
+            return_value=MockSearchResult(items=[{"id": "st-neg", "name": "Negotiation"}], total=1, page=1)
+        )
+        mock_client.update_opportunity = AsyncMock(return_value=sample_deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            await update("test-deal-789", stage_name="negotiation")
+
+        assert mock_client.update_opportunity.call_args.kwargs["opportunity_stage_id"] == "st-neg"
+
+    @pytest.mark.asyncio
+    async def test_deals_update_rejects_both_stage_id_and_name(self, capsys) -> None:
+        """Passing both --stage-id and --stage-name is a validation error; no API call is made."""
+        mock_client = MagicMock()
+        mock_client.update_opportunity = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            with pytest.raises(SystemExit):
+                await update("test-deal-789", stage_id="st1", stage_name="Negotiation")
+
+        mock_client.update_opportunity.assert_not_called()
+
 
 class TestConversationsCommands:
     @pytest.mark.asyncio
