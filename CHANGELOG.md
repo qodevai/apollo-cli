@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`deals update ID`** — `--name`, `--amount`, `--stage-id`/`--stage-name`, `--closed-date`, `--account-id`, `--owner-id`, `--next-step`, `--next-step-date`, `--description`. `--stage-name` resolves to an ID the same way `deals create` does; passing both `--stage-id` and `--stage-name` is a validation error. Wraps the new `ApolloClient.update_opportunity` (`PATCH /opportunities/{id}`).
+- **`tasks update ID`** — `--note`, `--due-at`, `--status`, `--priority`. Only the fields given are sent.
+- **`contacts update ID`** gains `--account-id`, `--email`, `--first-name`, `--last-name` (previously only `--title`/`--label-ids`).
+- **`notes get ID`** — fetches a single note by ID (`GET /notes/{id}`), letting a note be verified without a round trip through `notes search` (whose own quota bucket can run dry independently of every other endpoint — see the API's CLAUDE.md).
+- **Friendly `--due-at` parsing** (`tasks create`/`tasks connect`/`tasks update`) — accepts `YYYY-MM-DD` (defaults to 09:00 Europe/Berlin), `YYYY-MM-DDTHH:MM` with no offset (assumed Europe/Berlin), or a full ISO 8601 datetime with its own offset; always sends UTC to Apollo. Previously `--due-at` was passed straight through, so anything but a fully-qualified ISO 8601 string with an explicit offset risked an ambiguous or rejected value.
+- `deals set-role` now surfaces `RoleAssignmentError` (from `update_opportunity_roles`'s new fail-loud re-read) as exit code 82, the same as any other API error, instead of falling through to the generic "unexpected error" exit code 1.
+
+### Changed
+
+- Requires `qodev-apollo-api>=0.7.0`, which ships `update_opportunity`, `get_note`, and the `update_opportunity_roles` fail-loud fix that the new commands above wrap.
+
 ## [1.5.1] - 2026-08-31
 
 ### Fixed

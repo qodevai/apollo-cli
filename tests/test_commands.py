@@ -214,6 +214,50 @@ class TestContactsCommands:
         assert data["name"] == "Jane Smith"
         assert data["title"] == "VP Engineering"
 
+    @pytest.mark.asyncio
+    async def test_contacts_update_account_id_and_names(self, sample_contact: dict, capsys) -> None:
+        """--account-id/--email/--first-name/--last-name all reach update_contact."""
+        mock_client = MagicMock()
+        mock_client.update_contact = AsyncMock(return_value=sample_contact)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import update
+
+            await update(
+                "test-contact-123",
+                account_id="acc-1",
+                email="new@example.com",
+                first_name="Janet",
+                last_name="Smythe",
+            )
+
+        contact_id = mock_client.update_contact.call_args.args[0]
+        fields = mock_client.update_contact.call_args.kwargs
+        assert contact_id == "test-contact-123"
+        assert fields == {
+            "account_id": "acc-1",
+            "email": "new@example.com",
+            "first_name": "Janet",
+            "last_name": "Smythe",
+        }
+
+    @pytest.mark.asyncio
+    async def test_contacts_update_omits_unset_fields(self, sample_contact: dict, capsys) -> None:
+        """Only --title is given; nothing else is forwarded."""
+        mock_client = MagicMock()
+        mock_client.update_contact = AsyncMock(return_value=sample_contact)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import update
+
+            await update("test-contact-123", title="CTO")
+
+        assert mock_client.update_contact.call_args.kwargs == {"title": "CTO"}
+
 
 class TestAccountsCommands:
     @pytest.mark.asyncio
@@ -289,6 +333,58 @@ class TestDealsCommands:
         data = json.loads(captured.out)
         assert data["name"] == "Enterprise Deal"
         assert data["stage_name"] == "Negotiation"
+
+    @pytest.mark.asyncio
+    async def test_deals_update_passes_only_given_fields(self, sample_deal: dict, capsys) -> None:
+        """deals update forwards only the fields that were provided."""
+        mock_client = MagicMock()
+        mock_client.update_opportunity = AsyncMock(return_value=sample_deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            await update("test-deal-789", next_step="Send contract", next_step_date="2026-09-07")
+
+        deal_id = mock_client.update_opportunity.call_args.args[0]
+        fields = mock_client.update_opportunity.call_args.kwargs
+        assert deal_id == "test-deal-789"
+        assert fields == {"next_step": "Send contract", "next_step_date": "2026-09-07"}
+
+    @pytest.mark.asyncio
+    async def test_deals_update_resolves_stage_name(self, sample_deal: dict, capsys) -> None:
+        """deals update --stage-name resolves to opportunity_stage_id."""
+        mock_client = MagicMock()
+        mock_client.list_all_stages = AsyncMock(
+            return_value=MockSearchResult(items=[{"id": "st-neg", "name": "Negotiation"}], total=1, page=1)
+        )
+        mock_client.update_opportunity = AsyncMock(return_value=sample_deal)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            await update("test-deal-789", stage_name="negotiation")
+
+        assert mock_client.update_opportunity.call_args.kwargs["opportunity_stage_id"] == "st-neg"
+
+    @pytest.mark.asyncio
+    async def test_deals_update_rejects_both_stage_id_and_name(self, capsys) -> None:
+        """Passing both --stage-id and --stage-name is a validation error; no API call is made."""
+        mock_client = MagicMock()
+        mock_client.update_opportunity = AsyncMock()
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.deals import update
+
+            with pytest.raises(SystemExit):
+                await update("test-deal-789", stage_id="st1", stage_name="Negotiation")
+
+        mock_client.update_opportunity.assert_not_called()
 
 
 class TestConversationsCommands:
@@ -727,6 +823,26 @@ class TestNotesCommands:
         assert call_kwargs["account_ids"] == ["a1"]
         assert call_kwargs["opportunity_ids"] == ["d1"]
 
+    @pytest.mark.asyncio
+    async def test_notes_get(self, capsys) -> None:
+        """`notes get ID` fetches a single note by ID."""
+        mock_client = MagicMock()
+        mock_client.get_note = AsyncMock(
+            return_value={"id": "note-1", "content": "hi", "contact_ids": ["c1"], "opportunity_ids": ["d1"]}
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import get
+
+            await get(id="note-1")
+
+        mock_client.get_note.assert_called_once_with("note-1")
+        data = json.loads(capsys.readouterr().out)
+        assert data["id"] == "note-1"
+        assert data["opportunity_ids"] == ["d1"]
+
 
 class TestTasksCommands:
     @pytest.mark.asyncio
@@ -806,3 +922,51 @@ class TestTasksCommands:
             await connect(contact_id="c1", note="Hi Jane, ...")
 
         assert mock_client.create_task.call_args.kwargs["note"] == "Hi Jane, ..."
+
+    @pytest.mark.asyncio
+    async def test_create_due_at_bare_date_resolved_to_berlin_9am_utc(self) -> None:
+        """A bare YYYY-MM-DD --due-at is resolved to 09:00 Europe/Berlin, sent as UTC."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t5"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import create
+
+            await create(contact_ids="c1", due_at="2026-09-09")
+
+        assert mock_client.create_task.call_args.kwargs["due_at"] == "2026-09-09T07:00:00Z"
+
+    @pytest.mark.asyncio
+    async def test_update_passes_only_given_fields(self) -> None:
+        """tasks update forwards only the fields that were provided, with --due-at parsed."""
+        mock_client = MagicMock()
+        mock_client.update_task = AsyncMock(return_value={"id": "t6"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import update
+
+            await update("t6", note="Called, left voicemail", due_at="2026-09-09T09:00")
+
+        task_id = mock_client.update_task.call_args.args[0]
+        fields = mock_client.update_task.call_args.kwargs
+        assert task_id == "t6"
+        assert fields == {"note": "Called, left voicemail", "due_at": "2026-09-09T07:00:00Z"}
+
+    @pytest.mark.asyncio
+    async def test_update_status_and_priority(self) -> None:
+        """--status and --priority are forwarded as-is."""
+        mock_client = MagicMock()
+        mock_client.update_task = AsyncMock(return_value={"id": "t7"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import update
+
+            await update("t7", status="complete", priority="low")
+
+        assert mock_client.update_task.call_args.kwargs == {"status": "complete", "priority": "low"}

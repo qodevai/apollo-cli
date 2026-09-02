@@ -32,7 +32,7 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 | `contacts search [--query Q] [--stage-id ID] [--stage-name NAME] [--linkedin-url URL]` | Search contacts |
 | `contacts get ID` | Get contact details |
 | `contacts create --first-name F --last-name L [--email E] [--title T] [--company C] [--linkedin-url URL]` | Create contact |
-| `contacts update ID [--title T] [--label-ids IDS]` | Update contact |
+| `contacts update ID [--title T] [--label-ids IDS] [--account-id ID] [--email E] [--first-name F] [--last-name L]` | Update contact |
 | `contacts upsert-by-linkedin URL [--name N] [--title T] [--stage-id ID]` | Get or create a contact by LinkedIn URL |
 | `contacts stages` | List all contact stages |
 
@@ -50,8 +50,9 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 | `deals search [--query Q] [--stage-id ID] [--stage-name NAME]` | Search deals. `--query` matches the **deal name** (`q_opportunity_name`) |
 | `deals get ID` | Get deal details |
 | `deals create --name N [--owner-id ID] [--account-id ID] [--amount N] [--stage-id ID \| --stage-name NAME] [--closed-date YYYY-MM-DD]` | Create a deal (needs a master API key) |
+| `deals update ID [--name N] [--amount N] [--stage-id ID \| --stage-name NAME] [--closed-date YYYY-MM-DD] [--account-id ID] [--owner-id ID] [--next-step TEXT] [--next-step-date YYYY-MM-DD] [--description TEXT]` | Update a deal's fields |
 | `deals role-types` | List opportunity contact role types |
-| `deals set-role ID --contact-id C [--role-type NAME_OR_ID] [--primary]` | Set/update a contact's role on a deal |
+| `deals set-role ID --contact-id C [--role-type NAME_OR_ID] [--primary]` | Set/update a contact's role on a deal. Fails loud (exit 82) if Apollo reports success but a read-back shows the role wasn't persisted — retry |
 
 ### pipelines
 
@@ -86,14 +87,20 @@ Get your API key from [Apollo.io Settings → API](https://app.apollo.io/#/setti
 | Command | Description |
 |---------|-------------|
 | `notes search [--contact-id ID] [--account-id ID] [--opportunity-id ID]` | Search notes |
+| `notes get ID` | Get a note by ID (doesn't share `notes search`'s quota bucket) |
 | `notes create --content TEXT [--contact-ids IDS] [--account-ids IDS] [--opportunity-ids IDS]` | Create a note (attach to any combination of contacts/accounts/opportunities) |
 
 ### tasks
 
 | Command | Description |
 |---------|-------------|
-| `tasks search [--type TYPE] [--status STATUS]` | Search tasks |
-| `tasks create --contact-ids IDS --note TEXT [--due-at DATE]` | Create a task |
+| `tasks search [--type TYPE] [--contact-id ID]` | Search tasks |
+| `tasks create --contact-ids IDS [--note TEXT] [--type TYPE] [--priority high\|medium\|low] [--user-id ID] [--due-at DATE] [--title TEXT]` | Create a task |
+| `tasks update ID [--note TEXT] [--due-at DATE] [--status STATUS] [--priority high\|medium\|low]` | Update a task's fields |
+| `tasks complete ID [--note TEXT]` | Mark a task as completed |
+| `tasks connect --contact-id C [--note TEXT] [--user-id ID] [--due-at DATE] [--title TEXT]` | Queue a LinkedIn connection request — **no message by default**; `--note` (if given) is what the recipient sees, `--title` is internal-only |
+
+`--due-at` (create/update/connect) accepts `YYYY-MM-DD` (→ 09:00 Europe/Berlin), `YYYY-MM-DDTHH:MM` with no offset (assumed Europe/Berlin), or a full ISO 8601 datetime with its own offset — always sent to Apollo as UTC.
 
 ### calls
 

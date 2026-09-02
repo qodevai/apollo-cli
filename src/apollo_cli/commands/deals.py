@@ -112,6 +112,66 @@ async def create(
     output(deal, ctx=ctx, format_fn=format_deal_detail)
 
 
+@deals_app.command
+async def update(
+    id: Annotated[str, Parameter(help="Deal ID")],
+    *,
+    name: Annotated[str | None, Parameter(name="--name", help="Deal name")] = None,
+    amount: Annotated[float | None, Parameter(name="--amount", help="Deal value (no currency symbol)")] = None,
+    stage_id: Annotated[str | None, Parameter(name="--stage-id", help="Deal stage ID")] = None,
+    stage_name: Annotated[
+        str | None,
+        Parameter(name="--stage-name", help="Deal stage name (resolved to an ID; avoids a `pipelines stages` lookup)"),
+    ] = None,
+    closed_date: Annotated[
+        str | None, Parameter(name="--closed-date", help="Expected/actual close date (YYYY-MM-DD)")
+    ] = None,
+    account_id: Annotated[str | None, Parameter(name="--account-id", help="Target account/company ID")] = None,
+    owner_id: Annotated[str | None, Parameter(name="--owner-id", help="Deal owner (team member) ID")] = None,
+    next_step: Annotated[str | None, Parameter(name="--next-step", help="Next step description")] = None,
+    next_step_date: Annotated[
+        str | None, Parameter(name="--next-step-date", help="Next step date (YYYY-MM-DD)")
+    ] = None,
+    description: Annotated[str | None, Parameter(name="--description", help="Deal description")] = None,
+) -> None:
+    """Update a deal/opportunity's fields.
+
+    Use ``--stage-name`` to set the stage by name instead of ID. At least one
+    field must be given.
+    """
+    if stage_id and stage_name:
+        error("Pass either --stage-id or --stage-name, not both.", ctx=ctx, code="conflicting_args", exit_code=2)
+        return
+
+    fields: dict[str, Any] = {}
+    if name is not None:
+        fields["name"] = name
+    if amount is not None:
+        fields["amount"] = amount
+    if closed_date:
+        fields["closed_date"] = closed_date
+    if account_id:
+        fields["account_id"] = account_id
+    if owner_id:
+        fields["owner_id"] = owner_id
+    if next_step is not None:
+        fields["next_step"] = next_step
+    if next_step_date:
+        fields["next_step_date"] = next_step_date
+    if description is not None:
+        fields["description"] = description
+
+    async with ctx.client() as client:
+        if stage_name:
+            all_stages = await client.list_all_stages()
+            stage_id = resolve_stage_id(stage_name, all_stages.items, kind="deal stage")
+        if stage_id:
+            fields["opportunity_stage_id"] = stage_id
+        deal = await client.update_opportunity(id, **fields)
+
+    output(deal, ctx=ctx, format_fn=format_deal_detail)
+
+
 ROLE_TYPE_COLUMNS = [("ID", "id"), ("Name", "name"), ("Display Order", "display_order")]
 
 
