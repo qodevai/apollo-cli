@@ -56,6 +56,17 @@ async def search(
 
 
 @notes_app.command
+async def get(
+    id: Annotated[str, Parameter(help="Note ID")],
+) -> None:
+    """Get a note by ID."""
+    async with ctx.client() as client:
+        result = await client.get_note(id)
+
+    output(result, ctx=ctx)
+
+
+@notes_app.command
 async def create(
     *,
     content: Annotated[str, Parameter(name="--content", help="Note content")],

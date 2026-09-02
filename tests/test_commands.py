@@ -823,6 +823,26 @@ class TestNotesCommands:
         assert call_kwargs["account_ids"] == ["a1"]
         assert call_kwargs["opportunity_ids"] == ["d1"]
 
+    @pytest.mark.asyncio
+    async def test_notes_get(self, capsys) -> None:
+        """`notes get ID` fetches a single note by ID."""
+        mock_client = MagicMock()
+        mock_client.get_note = AsyncMock(
+            return_value={"id": "note-1", "content": "hi", "contact_ids": ["c1"], "opportunity_ids": ["d1"]}
+        )
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.notes import get
+
+            await get(id="note-1")
+
+        mock_client.get_note.assert_called_once_with("note-1")
+        data = json.loads(capsys.readouterr().out)
+        assert data["id"] == "note-1"
+        assert data["opportunity_ids"] == ["d1"]
+
 
 class TestTasksCommands:
     @pytest.mark.asyncio
