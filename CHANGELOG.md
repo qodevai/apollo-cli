@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Requires `qodev-apollo-api`'s `update_opportunity`, `get_note`, and the `update_opportunity_roles` fail-loud fix — all landing after 0.6.0 (targeting apollo-api's `feat/write-commands` branch as of this writing; **not yet released**). `pyproject.toml`'s floor stays at `qodev-apollo-api>=0.6.0` (the current release) until the new version ships — CI (`UV_NO_SOURCES=1`, so it resolves from PyPI, not the local path source) will stay red on this branch until apollo-api is released and the floor is bumped here, matching how `deals create` shipped in #11.
+- Requires `qodev-apollo-api>=0.7.0`, which ships `update_opportunity`, `get_note`, and the `update_opportunity_roles` fail-loud fix that the new commands above wrap.
 
 ## [1.5.1] - 2026-08-31
 
