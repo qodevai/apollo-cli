@@ -106,6 +106,12 @@ async def update(
     *,
     title: Annotated[str | None, Parameter(name="--title", help="New job title")] = None,
     label_ids: Annotated[str | None, Parameter(name="--label-ids", help="Comma-separated label IDs")] = None,
+    account_id: Annotated[
+        str | None, Parameter(name="--account-id", help="Attach the contact to this account/company ID")
+    ] = None,
+    email: Annotated[str | None, Parameter(name="--email", help="New email address")] = None,
+    first_name: Annotated[str | None, Parameter(name="--first-name", help="New first name")] = None,
+    last_name: Annotated[str | None, Parameter(name="--last-name", help="New last name")] = None,
 ) -> None:
     """Update a contact's fields."""
     fields: dict = {}
@@ -113,6 +119,14 @@ async def update(
         fields["title"] = title
     if label_ids:
         fields["label_ids"] = parse_comma_list(label_ids)
+    if account_id:
+        fields["account_id"] = account_id
+    if email:
+        fields["email"] = email
+    if first_name:
+        fields["first_name"] = first_name
+    if last_name:
+        fields["last_name"] = last_name
 
     async with ctx.client() as client:
         result = await client.update_contact(id, **fields)

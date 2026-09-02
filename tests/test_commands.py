@@ -214,6 +214,50 @@ class TestContactsCommands:
         assert data["name"] == "Jane Smith"
         assert data["title"] == "VP Engineering"
 
+    @pytest.mark.asyncio
+    async def test_contacts_update_account_id_and_names(self, sample_contact: dict, capsys) -> None:
+        """--account-id/--email/--first-name/--last-name all reach update_contact."""
+        mock_client = MagicMock()
+        mock_client.update_contact = AsyncMock(return_value=sample_contact)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import update
+
+            await update(
+                "test-contact-123",
+                account_id="acc-1",
+                email="new@example.com",
+                first_name="Janet",
+                last_name="Smythe",
+            )
+
+        contact_id = mock_client.update_contact.call_args.args[0]
+        fields = mock_client.update_contact.call_args.kwargs
+        assert contact_id == "test-contact-123"
+        assert fields == {
+            "account_id": "acc-1",
+            "email": "new@example.com",
+            "first_name": "Janet",
+            "last_name": "Smythe",
+        }
+
+    @pytest.mark.asyncio
+    async def test_contacts_update_omits_unset_fields(self, sample_contact: dict, capsys) -> None:
+        """Only --title is given; nothing else is forwarded."""
+        mock_client = MagicMock()
+        mock_client.update_contact = AsyncMock(return_value=sample_contact)
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.contacts import update
+
+            await update("test-contact-123", title="CTO")
+
+        assert mock_client.update_contact.call_args.kwargs == {"title": "CTO"}
+
 
 class TestAccountsCommands:
     @pytest.mark.asyncio
