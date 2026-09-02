@@ -858,3 +858,51 @@ class TestTasksCommands:
             await connect(contact_id="c1", note="Hi Jane, ...")
 
         assert mock_client.create_task.call_args.kwargs["note"] == "Hi Jane, ..."
+
+    @pytest.mark.asyncio
+    async def test_create_due_at_bare_date_resolved_to_berlin_9am_utc(self) -> None:
+        """A bare YYYY-MM-DD --due-at is resolved to 09:00 Europe/Berlin, sent as UTC."""
+        mock_client = MagicMock()
+        mock_client.create_task = AsyncMock(return_value={"id": "t5"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import create
+
+            await create(contact_ids="c1", due_at="2026-09-09")
+
+        assert mock_client.create_task.call_args.kwargs["due_at"] == "2026-09-09T07:00:00Z"
+
+    @pytest.mark.asyncio
+    async def test_update_passes_only_given_fields(self) -> None:
+        """tasks update forwards only the fields that were provided, with --due-at parsed."""
+        mock_client = MagicMock()
+        mock_client.update_task = AsyncMock(return_value={"id": "t6"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import update
+
+            await update("t6", note="Called, left voicemail", due_at="2026-09-09T09:00")
+
+        task_id = mock_client.update_task.call_args.args[0]
+        fields = mock_client.update_task.call_args.kwargs
+        assert task_id == "t6"
+        assert fields == {"note": "Called, left voicemail", "due_at": "2026-09-09T07:00:00Z"}
+
+    @pytest.mark.asyncio
+    async def test_update_status_and_priority(self) -> None:
+        """--status and --priority are forwarded as-is."""
+        mock_client = MagicMock()
+        mock_client.update_task = AsyncMock(return_value={"id": "t7"})
+
+        _ctx.ctx.configure(json_mode=True, api_key="test-key", limit=25, page=1)
+
+        with patch.object(_ctx.ctx, "client", return_value=MockAsyncContextManager(mock_client)):
+            from apollo_cli.commands.tasks import update
+
+            await update("t7", status="complete", priority="low")
+
+        assert mock_client.update_task.call_args.kwargs == {"status": "complete", "priority": "low"}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from apollo_cli.util import parse_comma_list, resolve_stage_id
+from apollo_cli.util import parse_comma_list, parse_due_at, resolve_stage_id
 
 
 class TestParseCommaList:
@@ -54,3 +54,34 @@ class TestResolveStageId:
         stages = [{"id": str(i), "name": f"Stage{i:02d}"} for i in range(30)]
         with pytest.raises(ValueError, match=r"\(\+15 more\)"):
             resolve_stage_id("missing", stages)
+
+
+class TestParseDueAt:
+    def test_bare_date_defaults_to_9am_berlin(self) -> None:
+        # September = CEST (UTC+2) → 09:00 Berlin is 07:00 UTC.
+        assert parse_due_at("2026-09-09") == "2026-09-09T07:00:00Z"
+
+    def test_date_and_time_no_offset_assumed_berlin(self) -> None:
+        assert parse_due_at("2026-09-09T09:00") == "2026-09-09T07:00:00Z"
+        assert parse_due_at("2026-09-09T09:00:00") == "2026-09-09T07:00:00Z"
+
+    def test_winter_date_uses_cet_offset(self) -> None:
+        # January = CET (UTC+1) → 09:00 Berlin is 08:00 UTC.
+        assert parse_due_at("2026-01-09") == "2026-01-09T08:00:00Z"
+
+    def test_zulu_suffix_passed_through(self) -> None:
+        assert parse_due_at("2026-09-09T07:00:00Z") == "2026-09-09T07:00:00Z"
+
+    def test_explicit_offset_converted_to_utc(self) -> None:
+        assert parse_due_at("2026-09-09T09:00:00+02:00") == "2026-09-09T07:00:00Z"
+
+    def test_strips_surrounding_whitespace(self) -> None:
+        assert parse_due_at("  2026-09-09  ") == "2026-09-09T07:00:00Z"
+
+    def test_invalid_value_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Invalid --due-at"):
+            parse_due_at("not-a-date")
+
+    def test_partial_garbage_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Invalid --due-at"):
+            parse_due_at("2026-13-40")

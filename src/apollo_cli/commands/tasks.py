@@ -9,9 +9,14 @@ from cyclopts import App, Parameter
 from apollo_cli.context import ctx
 from apollo_cli.formatters.generic import list_table
 from apollo_cli.output import output, output_list
-from apollo_cli.util import parse_comma_list
+from apollo_cli.util import parse_comma_list, parse_due_at
 
 tasks_app = App(name="tasks", help="Task management.")
+
+DUE_AT_HELP = (
+    "Due date/time: YYYY-MM-DD (09:00 Europe/Berlin), YYYY-MM-DDTHH:MM (assumed "
+    "Europe/Berlin), or a full ISO 8601 datetime with its own timezone offset."
+)
 
 
 def _task_extras(*, user_id: str | None, due_at: str | None, title: str | None) -> dict[str, str]:
@@ -20,7 +25,7 @@ def _task_extras(*, user_id: str | None, due_at: str | None, title: str | None) 
     if user_id is not None:
         extra["user_id"] = user_id
     if due_at is not None:
-        extra["due_at"] = due_at
+        extra["due_at"] = parse_due_at(due_at)
     if title is not None:
         extra["title"] = title
     return extra
@@ -74,9 +79,7 @@ async def create(
         str | None,
         Parameter(name="--user-id", help="Task owner. Apollo rejects creation without a valid owner"),
     ] = None,
-    due_at: Annotated[
-        str | None, Parameter(name="--due-at", help="Due date, ISO 8601 (e.g. 2026-09-22T08:00:00Z)")
-    ] = None,
+    due_at: Annotated[str | None, Parameter(name="--due-at", help=DUE_AT_HELP)] = None,
     title: Annotated[
         str | None, Parameter(name="--title", help="Task title shown in Apollo (internal, never sent)")
     ] = None,
@@ -103,9 +106,7 @@ async def connect(
         str | None,
         Parameter(name="--user-id", help="Task owner. Apollo rejects creation without a valid owner"),
     ] = None,
-    due_at: Annotated[
-        str | None, Parameter(name="--due-at", help="Due date, ISO 8601 (e.g. 2026-09-22T08:00:00Z)")
-    ] = None,
+    due_at: Annotated[str | None, Parameter(name="--due-at", help=DUE_AT_HELP)] = None,
     title: Annotated[
         str | None, Parameter(name="--title", help="Task title shown in Apollo (internal, never sent)")
     ] = None,
@@ -127,6 +128,32 @@ async def connect(
             priority=priority,
             **extra,
         )
+
+    output(result, ctx=ctx)
+
+
+@tasks_app.command
+async def update(
+    id: Annotated[str, Parameter(help="Task ID")],
+    *,
+    note: Annotated[str | None, Parameter(name="--note", help="Task description")] = None,
+    due_at: Annotated[str | None, Parameter(name="--due-at", help=DUE_AT_HELP)] = None,
+    status: Annotated[str | None, Parameter(name="--status", help="Task status (scheduled, complete, ...)")] = None,
+    priority: Annotated[str | None, Parameter(name="--priority", help="Priority (high, medium, low)")] = None,
+) -> None:
+    """Update a task's fields."""
+    fields: dict[str, str] = {}
+    if note is not None:
+        fields["note"] = note
+    if due_at is not None:
+        fields["due_at"] = parse_due_at(due_at)
+    if status is not None:
+        fields["status"] = status
+    if priority is not None:
+        fields["priority"] = priority
+
+    async with ctx.client() as client:
+        result = await client.update_task(id, **fields)
 
     output(result, ctx=ctx)
 

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
+
+# Jan's local timezone — the assumed zone for a --due-at value with no offset of
+# its own (a bare date, or a date+time with no trailing Z/+HH:MM).
+_LOCAL_TZ = ZoneInfo("Europe/Berlin")
 
 
 def _field(item: Any, key: str) -> Any:
@@ -51,3 +57,42 @@ def parse_comma_list(raw: str) -> list[str]:
     if not tokens and raw.strip():
         raise ValueError(f"expected comma-separated values, got only separators: {raw!r}")
     return tokens
+
+
+def parse_due_at(raw: str) -> str:
+    """Parse a ``--due-at`` CLI value into a UTC ISO 8601 string (``...Z``) for the API.
+
+    Accepts:
+    - ``YYYY-MM-DD`` — a bare date defaults to **09:00 Europe/Berlin**.
+    - ``YYYY-MM-DDTHH:MM`` (optionally with seconds) and **no** offset — assumed
+      Europe/Berlin.
+    - A full ISO 8601 datetime carrying its own offset (trailing ``Z`` or
+      ``+HH:MM``/``-HH:MM``) — used as given, just converted to UTC.
+
+    Args:
+        raw: The raw ``--due-at`` string.
+
+    Returns:
+        UTC datetime as ``YYYY-MM-DDTHH:MM:SSZ``.
+
+    Raises:
+        ValueError: ``raw`` doesn't parse as a date or datetime.
+    """
+    value = raw.strip()
+    try:
+        if len(value) == 10:
+            # Bare date: YYYY-MM-DD.
+            dt = datetime.strptime(value, "%Y-%m-%d").replace(hour=9, minute=0, tzinfo=_LOCAL_TZ)
+        else:
+            # datetime.fromisoformat only accepts "+00:00", not a trailing "Z", for
+            # the UTC offset until Python 3.11 — normalise it ourselves either way.
+            iso_value = f"{value[:-1]}+00:00" if value.endswith("Z") else value
+            dt = datetime.fromisoformat(iso_value)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_LOCAL_TZ)
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid --due-at {raw!r}: expected YYYY-MM-DD, YYYY-MM-DDTHH:MM, or a "
+            f"full ISO 8601 datetime with a timezone offset."
+        ) from exc
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
